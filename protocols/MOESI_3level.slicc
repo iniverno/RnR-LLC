@@ -1,0 +1,5 @@
+../protocols/MOESI_3level-msg.sm
+../protocols/MOESI_3level-L1L2cache.sm
+../protocols/MOESI_3level-L3cache.sm
+../protocols/MOESI_3level-dir.sm
+../protocols/standard_CMP-protocol.sm

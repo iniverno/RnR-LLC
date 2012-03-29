@@ -1,0 +1,7 @@
+../protocols/MSI_MOSI_3level-msg.sm
+../protocols/MSI_MOSI_3level-L1cache.sm
+../protocols/MSI_MOSI_3level-L2cache.sm
+../protocols/MSI_MOSI_3level-L3cache.sm
+../protocols/MSI_MOSI_3level-mem.sm
+../protocols/standard_CMP-protocol.sm
+

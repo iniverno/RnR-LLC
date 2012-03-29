@@ -1,0 +1,24 @@
+<html>
+<head>
+<title>html/MSI_MOSI_inclusive/</title>
+</head>
+<SCRIPT>var tid;function initScrollSynchronization () { 
+   tid = setInterval('syncFrame()', 25); 
+ }
+ function syncFrame () { 
+   if (document.all && !window.opera) { 
+     var scrollTop = Cabecera.document.body.scrollTop; 
+     var scrollLeft = Cabecera.document.body.scrollLeft; 
+   } 
+   else { 
+     var scrollTop = Cabecera.pageYOffset; 
+     var scrollLeft = frame0.pageXOffset; 
+   } 
+   Table.scrollTo (scrollLeft, scrollTop);
+ }
+ </SCRIPT><frameset rows="150,*,30" ONLOAD="initScrollSynchronization()">
+  <frame name="Cabecera" src="L1Cache_cabecera.html">
+  <frame name="Table" src="L1Cache_table.html">
+  <frame name="Status" src="empty.html">
+</frameset>
+</html>

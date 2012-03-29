@@ -1,0 +1,626 @@
+
+
+/*
+ * $Id: Sequencer.h 1.70 2006/09/27 14:56:41-05:00 bobba@s1-01.cs.wisc.edu $
+ *
+ * Description: 
+ *
+ */
+
+#include "Global.h"
+#include "RubyConfig.h"
+#include "Consumer.h"
+#include "CacheRequestType.h"
+#include "AccessModeType.h"
+#include "GenericMachineType.h"
+#include "PrefetchBit.h"
+#include "Map.h"
+#include "Address.h"
+#include "CacheMsg.h"
+#include "Address.h"
+#include "Profiler.h"
+#include "CacheProfiler.h"
+#include "AddressProfiler.h"
+#include "System.h"
+#include "Network.h"
+#include "PrioHeap.h"
+#include "CacheMsg.h"
+#include "Driver.h"
+#include "Protocol.h"
+#include "util.h"
+#include "Map.h"
+#include "Debug.h"
+#include "MachineType.h"
+#include "TransactionInterfaceManager.h"
+#include "interface.h"
+#include "ResponseMsg.h"
+#include "RubySlicc_ComponentMapping.h"
+#include "RubySlicc_Util.h"
+#include "MessageBuffer.h"
+
+#include "Prefetcher.h"
+
+#include <queue>
+
+#include "Dram.h"
+
+#define DEBUG_DRAM 0
+
+  // Constructors
+  Dram::Dram(AbstractChip* chip_ptr, int version)
+  {
+  
+    prefetchQueueSizeCt=8;
+    demandQueueSizeCt=16;
+    //el patr—n de acierto est‡ definido como 4+4+7+4+4
+    hitBankBusyMask = 0x7F00;  // 0111 1111 0000 0000  - 7^1 4^0 4^0
+    
+    if(g_CYCLES_BUS_DRAM==1) hitBusBusyMask = 0x80000; // 1000 0000 0000 0000 0000 - 4^1 19^0
+    else if(g_CYCLES_BUS_DRAM==4) hitBusBusyMask = 0x780000; // 0111 1000 0000 0000 0000 0000 - 4^1 19^0
+    else cerr << "HAY un error grave en g_CYCLES_BUS_DRAM" << endl;
+ 
+  //el patr—n de fallo est‡ definido como 4+4+7+8+7+4+4
+  missBankBusyMask = 0x3FFFFF00; // 0011 1111 1111 1111 1111 1111 0000 0000 - 22^1 8^0
+  
+  
+  if(g_CYCLES_BUS_DRAM==1) missBusBusyMask = 0x400000000; //  0100 0000 0000 0000 0000 0000 0000 0000 0000 -  4^1 34^0  //para ocupar el bus 1 ciclo
+    else if(g_CYCLES_BUS_DRAM==4) missBusBusyMask = 0x3C00000000;  // 0011 1100 0000 0000 0000 0000 0000 0000 0000 0000 -  4^1 34^0
+    else cerr << "HAY un error grave en g_CYCLES_BUS_DRAM" << endl;
+    
+    m_version=version;
+    numOfBanks=16;
+    logNumOfBanks=4;
+    
+    
+    m_chip_ptr=chip_ptr;
+    banks.setSize(numOfBanks);
+    for(int i=0; i<numOfBanks; i++) 
+    {
+      banks[i].bankBusyBitmap=0;
+      banks[i].busy=false;
+      banks[i].scheduled=false;
+    }
+    lastBankUsed=0;
+    
+    srand(version);
+    
+    //stats
+    cyclesBusBusyPerProc.setSize(RubyConfig::numberOfProcsPerChip());
+    cyclesBusBusyRatioPerProc.setSize(RubyConfig::numberOfProcsPerChip());
+    
+    numRequestsQueued.setSize(numOfBanks);
+	numDemandsQueued.setSize(numOfBanks);
+	numPrefetchsQueued.setSize(numOfBanks);
+
+	numRequestsServed.setSize(numOfBanks);
+	numDemandsServed.setSize(numOfBanks);
+	numPrefetchsServed.setSize(numOfBanks);
+
+	numPrefetchPageHits.setSize(numOfBanks);
+	numDemandPageHits.setSize(numOfBanks);
+	
+	cyclesDemandService.setSize(numOfBanks);
+	cyclesPrefetchService.setSize(numOfBanks);
+
+  	avgLatDemandService.setSize(numOfBanks);
+	avgLatPrefetchService.setSize(numOfBanks);
+	avgLatService.setSize(numOfBanks);
+
+	demandPageHitRatio.setSize(numOfBanks);
+	prefetchPageHitRatio.setSize(numOfBanks);
+	pageHitRatio.setSize(numOfBanks);
+	
+	latDemandMin.setSize(numOfBanks);
+	latDemandMax.setSize(numOfBanks);
+		
+	latPrefetchMin.setSize(numOfBanks);
+	latPrefetchMax.setSize(numOfBanks);
+	
+		
+	medDemandQueueSize.setSize(numOfBanks);
+	medPrefetchQueueSize.setSize(numOfBanks);
+		
+	maxDemandQueueSize.setSize(numOfBanks);
+	maxPrefetchQueueSize.setSize(numOfBanks);
+	
+	//PattsMetrics
+	coresQueued.setSize(numOfBanks);
+	for(int i=0; i<numOfBanks; i++) coresQueued[i].setSize(RubyConfig::numberOfProcsPerChip());
+	BWC.setSize(numOfBanks);
+	BWNO.setSize(numOfBanks);
+	
+    //inicializamos stats
+    clearStats();
+  }
+
+  // Destructor
+  Dram::~Dram(){0;}
+  
+  char* Dram::binary (uint64 v) {
+static char binstr[65] ;
+int i ;
+
+binstr[64] = '\0' ;
+for (i=0; i<64; i++) { binstr[63-i] = v & 1 ? '1' : '0' ; v >>= 1 ;}
+return binstr;
+}
+  
+  // Public Methods
+  void Dram::wakeup()
+  {
+  
+     if(DEBUG_DRAM &&  !g_CARGA_CACHE ) cerr << "wakeup DRAM: " << g_eventQueue_ptr->getTime() << endl;
+   if(!g_CARGA_CACHE && !(g_eventQueue_ptr->getTime()%freqRatio)) 
+   {
+    //taux=0;
+  if(DEBUG_DRAM &&  !g_CARGA_CACHE ) cerr << "wakeup DRAM acciones: " << g_eventQueue_ptr->getTime() << endl;
+    int i,j;
+    dramRequest request;
+    bool hit;
+    
+    if(DEBUG_DRAM &&  !g_CARGA_CACHE )
+    {              
+        cout << "bankBusyBitmap: " ;
+        for(i=0; i< numOfBanks; i++) cout << banks[i].bankBusyBitmap ;
+        
+        cout << endl << "Tama–o demandQueue=" ;
+        for(i=0; i< numOfBanks; i++) cout <<banks[i].demandQueue.size() ;
+        
+        cout << endl << "Tama–o prefetchQueue=" ;
+        for(i=0; i< numOfBanks; i++) cout <<  banks[i].prefetchQueue.size() ;
+        
+        cout << endl << "Pagina abierta: " ;
+        for(i=0; i< numOfBanks; i++) cout << banks[i].pageTAG ;
+      
+      cout << endl <<endl << "busBusyBitmap: " << busBusyBitmap << endl;
+      cout << "primera petici—n en el bus: " << bus.top().addr << " de la L2 " << bus.top().requestor << endl;
+    }
+    
+    //Para cada banco insertamos petici—n si toca
+    for(i=0; i< numOfBanks; i++)
+    { 
+      banks[i].bankBusyBitmap >>= 1;
+    }
+    
+    //stats
+    cyclesDRAM++;
+    busBusyBitmap & 1 ? cyclesBusBusy++ : 0;
+       
+    busBusyBitmap >>= 1;
+    //cout << "despues: \t" << binary(busBusyBitmap) << "\t" << busBusyBitmap << "\t" <<g_eventQueue_ptr->getTime() <<endl;
+    
+    //tenemos que sacar algo del bus?
+    if(bus.size() > 0  && bus.top().wakeUp <= g_eventQueue_ptr->getTime())
+    {
+      request=bus.top();
+      
+     // if(request.wakeUp < taux) cout << "temporizaci—n err—nea" << endl, exit(-1);
+      //taux=request.wakeUp;
+      
+      bus.pop();
+      
+      //podemos mandar el dato al controlador de mem!
+      
+        ResponseMsg out_msg;
+              
+        (out_msg).m_Address = request.addr;
+        
+         //if(request.addr.getAddress()==0xbdf86b840) cout << "dram " << g_eventQueue_ptr->getTime() << endl;
+      
+        //CAMBIAR PARA A„ADIR ESCRITURA!!!
+        (out_msg).m_Type = CoherenceResponseType_DATA;
+        (out_msg).m_MessageSize = MessageSizeType_Data;
+        (out_msg).m_RequestorMachId = request.requestor;
+        (((out_msg).m_Destination).add((map_Address_to_Directory(request.addr))));
+       // if(!g_CARGA_CACHE) cout << "a:" << g_eventQueue_ptr->getTime() - request.queueTime << " " << g_eventQueue_ptr->getTime() << " " << request.wakeUp << endl;
+       
+        if(DEBUG_DRAM  &&  !g_CARGA_CACHE) cout << "petici—n lista: " <<  request.addr << endl;
+       
+        //m_chip_ptr->m_Directory_dramToDirQueue_vec[0]->enqueue(out_msg, 1);
+        m_chip_ptr->m_Directory_dramToDirQueue_vec[map_Address_to_DirectoryNode(request.addr)]->enqueue(out_msg, 1);
+    }    
+    
+    int barrierBank=lastBankUsed;
+    i=firstBank();    
+    j=i;
+    
+    int reqType=-1;    
+    Time demTime=0, prefTime=0;  //para averiguar quiŽn lleg— antes al controlador
+    
+    /*
+    if(g_FIFO_IN_DRAM)
+     {
+     
+       //Ahora no priorizamos, ahora hacemos que el controlador sea FIFO
+      if(banks[i].demandQueue.size()>0) demTime=banks[i].demandQueue.front().queueTime;
+      if(banks[i].prefetchQueue.size()>0) prefTime=banks[i].prefetchQueue.front().queueTime;  
+              
+      if(demTime==0 && prefTime==0) { if(i!=barrierBank){ i=(i==numOfBanks-1)?0:i+1; continue;} else break; }
+    
+      if(demTime==0) reqType=0; //Solo hab’a algo en la cola de las prebœsquedas
+      else if(prefTime==0) reqType=1; //Solo hab’a algo en la cola de las prebœsquedas
+      else if(demTime <= prefTime) reqType=1;
+      else reqType=0;
+    
+    }*/
+    bool reqServed=false;
+     demTime=0, prefTime=0;
+  
+  while(!reqServed && j!=barrierBank)
+  {
+   do 
+    {  
+      if(banks[j].demandQueue.size()>0) { reqType=1; i=j; j=(j==numOfBanks-1)?0:j+1; goto salida1; }
+      
+     //siguiente banco % #bancos  
+      j=(j==numOfBanks-1)?0:j+1;
+      
+    } while(j!=barrierBank);     
+    
+    while(reqType==-1)
+    {
+      if(banks[j].prefetchQueue.size()>0) { reqType=0; i=j; j=(j==numOfBanks-1)?0:j+1; goto salida1; }
+      //siguiente banco % #bancos  
+      j=(j==numOfBanks-1)?0:j+1;
+      if(j==barrierBank) break;
+    }
+    
+    if(reqType==-1) { g_eventQueue_ptr->scheduleEvent(this, freqRatio); return; }
+     
+     salida1:
+    if(g_VARIANTE==13) PattsMetrics();
+    
+    
+    //stats
+     maxDemandQueueSize[i]<banks[i].demandQueue.size() ? maxDemandQueueSize[i]=banks[i].demandQueue.size() : 0;
+     maxPrefetchQueueSize[i]<banks[i].prefetchQueue.size() ? maxPrefetchQueueSize[i]=banks[i].prefetchQueue.size() : 0;
+     
+     medDemandQueueSize[i]+=banks[i].demandQueue.size();
+     medPrefetchQueueSize[i]+=banks[i].prefetchQueue.size();
+     
+      //-------  Hasta aqu’ el c—digo que marca la prioridad
+      
+      request=(reqType ? banks[i].demandQueue : banks[i].prefetchQueue).front();
+      
+      //comparamos la p‡gina que abri— el banco la œltima vez con la de la petici—n que vamos a servir
+     //if(i==2) cout << "req.addr: " << getPage(request.addr.getAddress()) << "  bank.pag: " << banks[i].pageTAG << endl;     
+      hit= getPage(request.addr.getAddress())==banks[i].pageTAG;      
+      
+     // if(DEBUG_DRAM  &&  !g_CARGA_CACHE)cout << "antes: \t\t" << binary(busBusyBitmap) << endl;
+      
+      if(!(busBusyBitmap & (hit ? Dram::hitBusBusyMask : missBusBusyMask))) //si el bus puede estar libre para la petici—n elegida
+        if(!(banks[i].bankBusyBitmap & (hit ? hitBankBusyMask : missBankBusyMask))) //si el banco puede estar libre para la petici—n elegida
+        {   
+          //la petici—n puede ser servida
+          //actualizamos tablas de ocupaci—n
+          busBusyBitmap |= (hit ? hitBusBusyMask : missBusBusyMask);
+          
+           //if(DEBUG_DRAM &&  !g_CARGA_CACHE)
+           //cout << "despues: \t" << binary(busBusyBitmap) << "\t" << busBusyBitmap << endl;
+          
+          banks[i].bankBusyBitmap |= (hit ? hitBankBusyMask : missBankBusyMask);          
+          
+          //actualizamos la p‡gina abierta en el banco
+          if(!hit) banks[i].pageTAG= getPage(request.addr.getAddress());  
+                  
+         //PattsMetrics
+         coresQueued[i][L1CacheMachIDToProcessorNum(request.core)]--;
+                   
+          (reqType ? banks[i].demandQueue : banks[i].prefetchQueue).pop_front();
+          
+          //Atenci—n si cambiamos la temporizaci—n!!!!
+          request.wakeUp= g_eventQueue_ptr->getTime() + freqRatio* (hit ? 23 : 38);
+          
+           //metemos la petici—n en el bus
+           //********************************************************
+         
+         //las peticiones est‡n ordenadas porque el bus es una cola con prioridad
+           bus.push(request); 
+           
+           //stats
+           cyclesBusBusyPerProc[L1CacheMachIDToProcessorNum(request.core)]+=g_CYCLES_BUS_DRAM;
+          
+          //*********************************
+          //stats
+          if(hit) (reqType ? numDemandPageHits[i] : numPrefetchPageHits[i])++;  //num aciertos pag
+          
+          (reqType ? numDemandsServed[i] : numPrefetchsServed[i])++; //num servicios
+          
+          //cout << "lat Servicio:" <<  request.wakeUp - request.queueTime <<endl;
+          uint64 aux=request.wakeUp - request.queueTime;
+          uint64 aux2=reqType ? latDemandMax[i] : latPrefetchMax[i];
+          
+          (reqType ? latDemandMax[i] : latPrefetchMax[i])= (aux2>aux ? aux2 : aux);
+          
+          aux2=reqType ? latDemandMin[i] : latPrefetchMin[i];	
+          (reqType ? latDemandMin[i] : latPrefetchMin[i])= (aux2<aux ? aux2 : aux);
+          
+          (reqType ? cyclesDemandService[i] : cyclesPrefetchService[i])+= aux; //latencia servicio
+          
+          reqServed=true;
+          
+        }   
+        
+   } //while reqServed    
+      //siguiente banco % #bancos  
+    
+    g_eventQueue_ptr->scheduleEvent(this, freqRatio);
+  }
+  g_eventQueue_ptr->scheduleEvent(this, 1);
+  //  cout<< "  dram::wakeup" << endl;
+} //wakeup
+
+
+void Dram::upgrade(Address addr)
+{
+  for(int i=0; i<numOfBanks; i++)
+    for(it=banks[i].prefetchQueue.begin(); it!=banks[i].prefetchQueue.end(); it++)
+    {
+      if(it->addr == addr )
+      {
+        dramRequest request=*it;
+        it=banks[i].prefetchQueue.erase(it);
+        banks[i].demandQueue.push_back(request);
+        return;
+      }
+    }
+}
+
+bool Dram::isAble(Address addr, int tipo)
+{
+  int bank= getBank(addr);
+   switch(tipo)
+   {
+    case 1:
+    case 2:  //demandas
+      return banks[bank].demandQueue.size() < demandQueueSizeCt; 
+      break;
+        
+    case 3:
+    case 4:  //prebusquedas
+      return banks[bank].prefetchQueue.size() < prefetchQueueSizeCt;
+    break;
+    
+    default:
+      break;
+  }
+}
+  
+  void Dram::request(Address addr, int tipo, MachineID node, MachineID core)
+  {
+    if(g_CARGA_CACHE)
+    {
+         ResponseMsg out_msg;
+              
+        (out_msg).m_Address = addr;
+        
+         //if(request.addr.getAddress()==0xbdf86b840) cout << "dram " << g_eventQueue_ptr->getTime() << endl;
+      
+        //CAMBIAR PARA A„ADIR ESCRITURA!!!
+        (out_msg).m_Type = CoherenceResponseType_DATA;
+        (out_msg).m_MessageSize = MessageSizeType_Data;
+        (out_msg).m_RequestorMachId = node;
+       // if(!g_CARGA_CACHE) cout << "a:" << g_eventQueue_ptr->getTime() - request.queueTime << " " << g_eventQueue_ptr->getTime() << " " << request.wakeUp << endl;
+       
+       
+        //m_chip_ptr->m_Directory_dramToDirQueue_vec[0]->enqueue(out_msg, 1);
+        m_chip_ptr->m_Directory_dramToDirQueue_vec[map_Address_to_DirectoryNode(addr)]->enqueue(out_msg, 1);
+        return;
+    }
+    
+    //cout << "DRAM" << m_version << endl;
+    if(DEBUG_DRAM &&  !g_CARGA_CACHE) cout << "request: " << addr << " " << node << "tipo: " << tipo << endl; 
+    
+   // if(addr.getAddress()==0xbdf86b840) cout << "Alarm: " << node << "tipo: " << tipo << endl; 
+    
+    int bank= getBank(addr);
+    
+    dramRequest request;
+    request.requestor=node;
+    request.addr=addr;
+    request.core=core;
+     Time now=g_eventQueue_ptr->getTime()+1;
+    
+    request.queueTime=now-1;  //for stats
+    
+    
+    switch(tipo)
+    {
+      case 1:
+      case 2:  //demandas
+     
+    coresQueued[bank][L1CacheMachIDToProcessorNum(core)]++;
+        request.demand=true;
+        banks[bank].demandQueue.push_back(request);
+        numDemandsQueued[bank]++;  //stats
+        break;
+        
+      case 3:
+      case 4:  //prebusquedas
+      //PattsMetrics
+  
+    coresQueued[bank][L1CacheMachIDToProcessorNum(core)]++;
+    
+        request.demand=false;
+        banks[bank].prefetchQueue.push_back(request);
+        numPrefetchsQueued[bank]++;  //stats
+        break;
+      case 5:  //ug prefetch
+      //PattsMetrics
+    
+    
+        upgrade(request.addr);
+        break;
+      default:
+        break;
+    }
+    
+    //programamos la petici—n para un ciclo de bus (modulo freqRatio)
+   
+    
+    //while(now%freqRatio) now++;    
+    //optimizacion si freqRatio==4  (asi eliminamos el mod)
+
+    
+    g_eventQueue_ptr->scheduleEvent(this, 1); 
+    
+  } 
+  
+ /*  int Dram::nextBank(int bank)
+  {
+    
+    //round-robin fashion
+    (i==numOfBanks-1)?0:i+1;
+  
+    return lastBankUsed;
+    
+  }*/
+  
+  int Dram::firstBank()
+  {
+    //round-robin fashion
+    lastBankUsed= (lastBankUsed== numOfBanks-1) ? 0 : lastBankUsed+1;
+  
+    return lastBankUsed;   
+  }
+  
+  uint64 Dram::getBank(Address addr)
+  {
+    if(g_GROUP_L2BANKS_TO_MEM) addr.bitSelect(14,  14+logNumOfBanks-1);
+    else return addr.bitSelect(13,  13+logNumOfBanks-1);    
+    //Vamos a probar asignar el banco de manera aleatoria
+    //return rand() % 16;
+  }
+  
+  uint64 Dram::getPage(uint64 addr)
+  {    
+    //return addr >> 13+logNumOfBanks;
+    //uint64 mask= ~(((~0)>>12)<<12);
+    
+    //return (addr>>RubyConfig::dataBlockBits()) & mask;
+    return addr >> 12;
+  }
+    
+  void Dram::PattsMetrics()
+  {
+    dramRequest req;
+    int coreServed, aux;
+    
+    for(int i=0; i<numOfBanks; i++)
+    {
+      if(banks[i].demandQueue.size()>0) req=banks[i].demandQueue.front();
+      else if(banks[i].prefetchQueue.size()>0) req=banks[i].prefetchQueue.front();
+      else continue;
+      BWC[L1CacheMachIDToProcessorNum(req.core)]++;
+      for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++)
+        if((coresQueued[i][j] - (int)(j==L1CacheMachIDToProcessorNum(req.core))) >0) BWNO[j]++;
+    }
+  }	
+  
+  Vector<int> Dram::getPattsMetricsBWC()
+  { Vector <int> aux (BWC); for(int i=0; i<numOfBanks; i++) BWC[i]=0; return aux;
+  }
+  
+  Vector<int> Dram::getPattsMetricsBWNO()
+  { Vector <int> aux (BWNO); for(int i=0; i<numOfBanks; i++) BWNO[i]=0; return aux;
+  }
+  
+  void Dram::printStats(ostream& out)
+  {
+    out << "DRAM " << m_version << endl;
+    out << "--------------" << endl;
+    for(int i=0; i<numOfBanks; i++)
+    {
+      numRequestsQueued[i]=numDemandsQueued[i] + numPrefetchsQueued[i];
+      numRequestsServed[i]=numDemandsServed[i] + numPrefetchsServed[i];
+      
+      if(numDemandsServed[i]) avgLatDemandService[i]= (double)cyclesDemandService[i]/ (double)numDemandsServed[i];
+      if(numPrefetchsServed[i])avgLatPrefetchService[i]= (double)cyclesPrefetchService[i]/ (double)numPrefetchsServed[i];
+      
+      if(numRequestsServed[i]) avgLatService[i]= (double)(cyclesPrefetchService[i]+cyclesDemandService[i])/  (double)numRequestsServed[i];
+
+	  if(numDemandsServed[i]) demandPageHitRatio[i]=(double) numDemandPageHits[i] / (double)numDemandsServed[i];
+	  if(numPrefetchsServed[i]) prefetchPageHitRatio[i]= (double)numPrefetchPageHits[i] / (double)numPrefetchsServed[i];
+	  if(numRequestsServed[i]) pageHitRatio[i]= (double)(numPrefetchPageHits[i]+numDemandPageHits[i]) / (double)numRequestsServed[i];	
+	  
+	  medDemandQueueSize[i]= (double)(medDemandQueueSize[i]*16) / (double)cyclesDRAM;
+	  medPrefetchQueueSize[i]= (double)(medPrefetchQueueSize[i]*16) / (double)cyclesDRAM;
+    
+    }
+    for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) cyclesBusBusyRatioPerProc[i]= cyclesBusBusyPerProc[i] / (double)cyclesDRAM;
+    
+    out << "bus busy ratio: " <<  cyclesBusBusy / (double)cyclesDRAM << endl << endl;
+    out << "bus busy cycles: " <<  cyclesBusBusy<< endl << endl;
+    
+    double aux=0;
+    uint64 aux2=0;
+    for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) {aux+=cyclesBusBusyRatioPerProc[i]; aux2+=cyclesBusBusyPerProc[i]; }
+    out << "bus busy ratio per PROC: " << aux2 << " -- " << aux << " -- "  <<  cyclesBusBusyRatioPerProc << endl;
+    
+   
+    
+    out << "numRequestsQueued: " << numRequestsQueued << endl;
+    out << "numDemandsQueued: " << numDemandsQueued << endl;
+    out << "numPrefetchsQueued: " << numPrefetchsQueued << endl<< endl;
+    
+    out << "numRequestsServed: " << numRequestsServed << endl;
+    out << "numDemandsServed: " << numDemandsServed << endl;
+    out << "numPrefetchsServed: " << numPrefetchsServed << endl<< endl;
+    
+    out << "avgLatService: " << avgLatService << endl;
+    out << "avgLatDemandService: " << avgLatDemandService << endl;
+    out << "avgLatPrefetchService: " << avgLatPrefetchService << endl<< endl;
+    
+    out << "pageHitRatio: " << pageHitRatio << endl;
+    out << "demandPageHitRatio: " << demandPageHitRatio << endl;
+    out << "prefetchPageHitRatio: " << prefetchPageHitRatio << endl<<endl;
+    
+    out << "latDemandMin: " << latDemandMin << endl;
+    out << "latDemandMax: " << latDemandMax << endl;
+    out << "latPrefetchMin: " << latPrefetchMin << endl;
+    out << "latPrefetchMax: " << latPrefetchMax << endl<< endl;
+    
+    out << "demandQueue max size: " << maxDemandQueueSize << endl;
+    out << "demandQueue med size: " << medDemandQueueSize << endl<< endl;
+    out << "prefetchQueue max size: " << maxPrefetchQueueSize << endl ;
+    out << "prefetchQueue med size: " << medPrefetchQueueSize << endl;
+    
+  } 
+  void Dram::clearStats()
+  {
+     for(int i=0; i< numOfBanks; i++)
+     {
+        
+		numDemandsQueued[i]=0;
+		numPrefetchsQueued[i]=0;
+
+		numDemandsServed[i]=0;
+		numPrefetchsServed[i]=0;
+
+		numPrefetchPageHits[i]=0;
+		numDemandPageHits[i]=0;
+
+		cyclesDemandService[i]=0;
+		cyclesPrefetchService[i]=0;
+		
+		latDemandMin[i]=1000;
+		latDemandMax[i]=0;
+		
+		latPrefetchMin[i]=1000;
+		latPrefetchMax[i]=0;
+		
+		maxDemandQueueSize[i]=0;
+		maxPrefetchQueueSize[i]=0;
+		
+		medDemandQueueSize[i]=0;
+		medPrefetchQueueSize[i]=0;
+	}
+	for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) cyclesBusBusyPerProc[i]=0;
+	
+	cyclesDRAM=0;
+	cyclesBusBusy=0;
+  } 
+  void Dram::print(ostream& out) const{0;} 
+  void Dram::printConfig(ostream& out){0;} 
+  
+  

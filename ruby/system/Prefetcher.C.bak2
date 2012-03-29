@@ -1,0 +1,381 @@
+
+/*
+ * Profiler.C
+ * 
+ * Description: See Profiler.h
+ *
+ * $Id$
+ *
+ */
+
+#include "Address.h"
+#include "Profiler.h"
+#include "CacheProfiler.h"
+#include "AddressProfiler.h"
+#include "System.h"
+#include "Network.h"
+#include "PrioHeap.h"
+#include "CacheMsg.h"
+#include "Driver.h"
+#include "Protocol.h"
+#include "util.h"
+#include "Map.h"
+#include "Debug.h"
+#include "MachineType.h"
+#include "TransactionInterfaceManager.h"
+#include "interface.h"
+#include "XactVisualizer.h"
+#include "XactProfiler.h"
+#include "RequestMsg.h"
+#include "RubySlicc_ComponentMapping.h"
+#include "RubySlicc_Util.h"
+#include "MessageBuffer.h"
+
+ Prefetcher::Prefetcher(AbstractChip* chip_ptr, int version)
+ {
+  if(isPrefetcher())
+  {
+    m_chip_ptr = chip_ptr;
+    m_version = version;
+  
+     m_metodo= prefetchMechanism(); 
+     
+     
+    //1=seqt, 2=pdfcm
+    if(m_metodo==1)
+    {
+      m_st_base_degree=prefetchDegree();
+    }
+   
+    if(m_metodo==2)
+    {
+      m_PDA_base_degree=prefetchDegree()+1;
+      m_PDA_degree=m_PDA_base_degree;
+      m_old_addr=Address(0);
+      m_last_addr=Address(0);
+      PDFCM_HT=(PDFCM_HT_entry *) calloc(PDFCM_HT_size, sizeof(PDFCM_HT_entry));
+      PDFCM_DT=(PDFCM_DT_entry *) calloc(PDFCM_DT_size, sizeof(PDFCM_DT_entry));       
+    }
+    
+     m_sent_prefetches=0;
+  
+     
+     cont.setSize(30);
+     
+       for(int j=0; j< 30; j++)
+       	 cont[j]=0;
+  }
+ }
+
+  // Destructor
+  Prefetcher::~Prefetcher(){0;}
+  #define MASK_16b (0xffff)
+
+
+
+  // Public Methods
+
+//###################################################
+  void Prefetcher::wakeup()
+  {  
+  Address predicted_address;
+  if(m_metodo==1)  //SEQT
+  {
+  
+     Address aux2, aux=m_last_addr;
+     
+     //Direcci—n del siguiente bloque
+     m_last_addr.setAddress( m_last_addr.maskLowOrderBits(RubyConfig::dataBlockBits()) + RubyConfig::dataBlockBytes()); 
+      aux2=m_last_addr;
+      
+      aux.makePageAddress();
+      aux2.makePageAddress();
+      //Si la prebœsqueda va a una p‡gina distinta, no la queremos
+     if(aux == aux2)
+      {   
+       
+        RequestMsg out_msg;
+        (out_msg).m_Address = m_last_addr;
+        //CAMBIAR PARA A„ADIR ESCRITURA!!!
+        (out_msg).m_Type = m_tipo==1 ? CoherenceRequestType_PREFS : CoherenceRequestType_PREFS;
+        (out_msg).m_MessageSize = MessageSizeType_Control;
+        m_chip_ptr->m_L2Cache_prefetchQueue_vec[m_version]->enqueue(out_msg, 1);
+  
+        Time current_time = g_eventQueue_ptr->getTime();
+     
+        if(m_st_degree > 0)
+        {
+  	      g_eventQueue_ptr->scheduleEvent(this, 1);
+  	      m_st_degree--;
+  	    }
+  	  }
+  	  
+  } else if (m_metodo==2)  //PDFCM
+  {
+  
+     predicted_address = Address(0); 
+    if (m_PDA_degree==m_PDA_base_degree){
+       
+       predicted_address = PDFCM_update_and_predict(); 
+    }
+    else if(m_history && m_PDA_degree>0){
+     
+       predicted_address = PDFCM_predict_next(); 
+     //predicted_address=Address(0);
+    }
+       
+        //cout << "wakeup:: last:" << m_last_addr << " predicted: " <<  predicted_address<< endl << endl;
+       
+    if (predicted_address.getAddress() && predicted_address!=m_last_addr  )
+    {
+        RequestMsg out_msg;
+        (out_msg).m_Address = predicted_address;
+                //CAMBIAR PARA A„ADIR ESCRITURA!!!
+
+        (out_msg).m_Type = m_tipo==1 ? CoherenceRequestType_PREFS : CoherenceRequestType_PREFS;
+        (out_msg).m_MessageSize = MessageSizeType_Control;
+        m_chip_ptr->m_L2Cache_prefetchQueue_vec[m_version]->enqueue(out_msg, 1);
+        
+        m_old_addr=m_last_addr;
+        m_last_addr= predicted_address;  
+        
+        if(m_PDA_degree > 0)
+        {
+          m_PDA_degree--; 
+          g_eventQueue_ptr->scheduleEvent(this, 1);	  
+           
+	    }
+      }
+         
+  
+    
+  }//PDFCM
+  	
+  	
+  	
+  	
+ // cout << "wakeup " <<  int_to_string(g_eventQueue_ptr->getTime()) << endl;
+  
+  }
+  
+
+
+#define MASK_16b (0xffff)
+
+    Address Prefetcher::PDFCM_update_and_predict (){
+      Address new_last_addr;
+      unsigned short new_history;
+      short actual_delta, predicted_delta;
+      Address pc=m_last_pc, addr=m_last_addr;
+      
+      // read PDFCM_HT entry
+     // cout << "pc: " << pc.getAddress() << endl;
+      unsigned int index = pc.getAddress() & PDFCM_HT_mask;
+      Address old_last_addr = PDFCM_HT[index].last_addr; 
+      unsigned short old_history = PDFCM_HT[index].history; 
+      char count = PDFCM_HT[index].count;
+   
+     //cout << "a:" << PDFCM_HT[index].PC.getAddress() <<"b:" << (pc.getAddress()>>RubyConfig::dataBlockBits()) << endl;
+      if (PDFCM_HT[index].PC != pc ){
+         // if it's a new PC replace the entry
+         m_history=0;
+         PDFCM_HT[index].PC=pc;
+         PDFCM_HT[index].history=0; 
+         PDFCM_HT[index].last_addr=addr; 
+         PDFCM_HT[index].count=0;
+         PDFCM_HT[index].tipo=m_tipo;
+         //cout << "salida1" << endl;
+         return Address(0);
+      }
+   
+      // compute deltas & update confidence counter
+      predicted_delta=PDFCM_DT[old_history].delta;
+      //cout << "predicted_delta: " << predicted_delta <<  endl;
+      actual_delta = addr.getLineAddress()-old_last_addr.getLineAddress();
+     
+      //cout << "actual_delta: " << addr.shiftLowOrderBits(RubyConfig::dataBlockBits()) <<" "<< addr.getLineAddress() <<" "<< old_last_addr.getLineAddress() << actual_delta <<  endl;
+      
+      if (actual_delta==predicted_delta){
+         if (count<3) count++;
+      }
+      else{ 
+         if (count>0) count--;
+      }
+   
+      // compute new history
+      
+      m_history = PDFCM_hash(old_history, actual_delta);
+   
+      // write PDFCM_HT entry
+      PDFCM_HT[index].last_addr = addr;
+      PDFCM_HT[index].history   = m_history;
+      PDFCM_HT[index].count=count;
+   
+      // update PDFCM_DT entry
+      PDFCM_DT[old_history].delta = actual_delta;
+   
+      // predict a new delta using the new history 
+      if (count<2) 
+      { //cout << "salida2" << endl;
+         return Address(0);
+      }
+      else 
+      {
+        
+        //Address aux=Address(addr.getAddress() + (PDFCM_DT[m_history].delta << RubyConfig::dataBlockBits()));
+        Address aux=addr;
+        Address aux2=addr;
+        aux.makeNextStrideAddress(PDFCM_DT[m_history].delta);
+        aux.makeLineAddress();
+        
+        aux.makePageAddress();
+        aux2.makePageAddress(); 
+        if(aux==aux2)
+        {
+          aux=addr;
+          aux.makeNextStrideAddress(PDFCM_DT[m_history].delta);
+          aux.makeLineAddress();
+        // cout << "salida3" << endl;
+       //cout << "update:: " << "delta: " <<  PDFCM_DT[new_history].delta << " " << aux << endl;
+         return aux;
+       } else
+          return Address(0);
+      }
+   }
+
+    Address Prefetcher::PDFCM_predict_next (){
+//cout << "next" << endl;
+      int delta;
+       
+      // compute delta 
+      delta = (m_last_addr.getLineAddress()-m_old_addr.getLineAddress()) & MASK_16b;
+   
+      // compute new history
+      m_history=PDFCM_hash(m_history, delta);
+      
+   //cout << "history: " <<  m_history << endl;
+  
+  // if(PDFCM_DT[m_history].delta!=0)
+    // cout << "delta: " <<  PDFCM_DT[m_history].delta << endl;
+  //cout << "salida next" << m_last_addr.getAddress() + PDFCM_DT[m_history].delta << endl<< endl;;
+   
+      // predict a new delta using the new history   
+      Address aux, aux2;
+      aux= m_last_addr;
+      aux2= Address(m_last_addr.getAddress() + (PDFCM_DT[m_history].delta << RubyConfig::dataBlockBits()));
+      aux2.makeLineAddress();
+      
+	  aux.makePageAddress();
+      aux2.makePageAddress(); 
+      if(aux==aux2)
+      {
+        
+        //Address aux3=Address(m_last_addr.getAddress() + (PDFCM_DT[m_history].delta <<  RubyConfig::dataBlockBits()));
+      	Address aux3=m_last_addr;
+      	aux3.makeNextStrideAddress(PDFCM_DT[m_history].delta);
+      	aux3.makeLineAddress();
+      	return aux3;
+      } else
+        return Address(0);
+   }
+
+    unsigned short Prefetcher::PDFCM_hash (unsigned short old_history, short delta){
+    // R5-->  R(16, 16, 16)  F(t, t, t)  S(10, 5, 0) ; (number of entries of PDFCM_DT = 2^t)
+   
+      unsigned short select, folded, shift;
+      select = delta;
+   
+      for(folded=0; select;) {
+         folded ^= select & PDFCM_DT_mask;  // fold t bits
+         select= select >> PDFCM_DT_bits;
+      }
+      shift = (old_history << 5) & PDFCM_DT_mask;     // shift 5 bits   
+      return shift ^ folded;
+   }
+
+//##############################################
+
+  void Prefetcher::firstUse(Address addr, Address pc, int tipo)
+  {
+  //	cout << "firstUse " <<  int_to_string(g_eventQueue_ptr->getTime()) << endl;
+  Time current_time = g_eventQueue_ptr->getTime();
+  m_tipo=tipo;
+  //CAMBIAR!!
+  
+  m_last_addr=Address(addr.maskLowOrderBits(RubyConfig::dataBlockBits()));
+  if(m_metodo==1)
+  {
+    m_st_degree=m_st_base_degree;
+     m_last_addr=addr;
+    
+  } else if(m_metodo==2)
+  {
+    m_PDA_degree=m_PDA_base_degree;
+    m_last_pc=pc;
+  }
+
+    g_eventQueue_ptr->scheduleEvent(this, 1); 
+    
+  }
+  
+  
+  
+  //#############################################
+  
+  
+  void Prefetcher::miss(Address addr, Address pc, int tipo)
+  {
+    //	cout << "Miss " <<  int_to_string(g_eventQueue_ptr->getTime()) << endl;
+
+  Time current_time = g_eventQueue_ptr->getTime();
+  
+  //CAMBIAR PARA A„ADIR ESCRITURA!!!
+
+  //m_tipo= tipo;
+  m_tipo=1;
+  if(tipo!=1) return; 
+  
+  m_last_addr=Address(addr.maskLowOrderBits(RubyConfig::dataBlockBits()));
+  
+  if(m_metodo==1)
+  {
+    m_st_degree=m_st_base_degree;
+  } else if(m_metodo==2)
+  {
+    m_PDA_degree=m_PDA_base_degree;
+    m_last_pc=pc;
+  }
+	
+	
+    g_eventQueue_ptr->scheduleEvent(this, 1);
+  }
+  
+ 
+
+void Prefetcher::print(ostream& out) const { 0;}
+  
+  void Prefetcher::printConfig(ostream& out)
+ {
+ 0;
+}
+
+
+
+//Si recibimos un:
+//mirar documento externo
+ void Prefetcher::stats(int t)
+ {
+   if(t<0 || t>21) {ERROR_MSG("Parametro fuera de rango");}
+   else
+     cont[t]++;
+  }
+
+
+void Prefetcher::printStats()
+{
+  cout << cont << endl;
+}
+  // Private copy constructor and assignment operator
+ // Prefetcher::Prefetcher(const Prefetcher& obj) {0; }
+  //	Prefetcher::Prefetcher& operator=(const Prefetcher& obj)  {0; }
+  

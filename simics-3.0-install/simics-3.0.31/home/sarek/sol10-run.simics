@@ -1,0 +1,40 @@
+#
+# If you have installed Solaris 10 using the supplied sol10-cd-install-1 and
+# sol10-cd-install-2 scripts, use this script to start a machine.  All
+# user-configuration variables supported by sarek-common can be used
+# with this file as well.
+#
+
+# set up 4 processor with 256MB
+# set up 32 processors with 512MB
+#@boards = {0 : [[0, 4, 4096], [1, 4, 0], [2, 4, 0], [3, 4, 0]]}
+
+#Ahora con 16
+#@if not "boards" in dir():
+#	boards = {0 : [[0, 4, 4096], [1, 4, 0], [2, 4, 0], [3, 4, 0],  [4, 4, 0], [5, 4, 0]],
+#           1 : [[0, 4,   0], [1, 4, 0]]}
+
+@if not "boards" in dir():
+	boards = {0 : [[0, 1, 4096]]}
+
+# do auto-login per default
+@if not "do_login" in dir():
+	do_login = 1
+
+@sarek_disk_size = 8513945600L
+#@sarek_files = [["/home/jalbe/comun/checkpoints/system-sol10-root.disk.craff", "ro", 0, 8513945600L],
+#["/home/jalbe/comun/checkpoints/system-01.disk.craff", "ro", 0, 8513945600L],
+#["/home/jalbe/comun/checkpoints/libsf90.diff.craff", "ro", 0, 8513945600L],
+#["/home/jalbe/comun/checkpoints/cpu2k6.fp.diff.craff", "ro", 0, 8513945600L],
+#["/home/jalbe/comun/checkpoints/cpu2k6.int.diff.craff", "ro", 0, 8513945600L],
+#["/home/jalbe/cpu2k6.swprev2.diff.craff", "ro", 0, 8513945600L]]
+
+@sarek_files = [["/home/jalbe/comun/checkpoints/system-sol10-root.disk.craff", "ro", 0, 8513945600L],
+["/home/jalbe/comun/checkpoints/system-01.disk.craff", "ro", 0, 8513945600L],
+["/home/jalbe/comun/checkpoints/libsf90.diff.craff", "ro", 0, 8513945600L],
+["/home/jalbe/comun/checkpoints/cpu2k6.fp.diff.craff", "ro", 0, 8513945600L],
+["/home/jalbe/comun/checkpoints/cpu2k6.int.diff.craff", "ro", 0, 8513945600L]]
+
+
+# the rest is common for all sarek machines
+run-command-file "sarek-common.simics"

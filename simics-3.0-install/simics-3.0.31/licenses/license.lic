@@ -1,0 +1,61 @@
+FEATURE eclipse vtech 3.0 permanent uncounted 10115420F8B8 \
+	 HOSTID=ANY SIGN=245B6D0450AE
+FEATURE p_developer vtech 3.0 permanent uncounted A84D9DD3F8B2 \
+	 VENDOR_STRING="Tc;Am;Lc;Ujalbe" HOSTID=ANY SIGN=E635F898E41C
+FEATURE devel_host_rh6-x86-64 vtech 3.0 permanent uncounted 25ECB3F38038 \
+	 HOSTID=ANY SIGN=99DC24B0FDC4
+FEATURE devel_host_win32-x86 vtech 3.0 permanent uncounted D4FF5BFE5E39 \
+	 HOSTID=ANY SIGN=4A6474D065E4
+FEATURE devel_host_rh6-x86 vtech 3.0 permanent uncounted 26BB797D92D0 \
+	 HOSTID=ANY SIGN=6EE89178CDB8
+FEATURE devel_host_sol7-v9 vtech 3.0 permanent uncounted 3E2971D8F5C5 \
+	 HOSTID=ANY SIGN=E230536ECEEC
+FEATURE devel_distribution vtech 3.0 permanent uncounted A5085802888A \
+	 HOSTID=ANY SIGN=21ECC8080168
+FEATURE devel_large_system vtech 3.0 permanent uncounted 74A93D727A8C \
+	 HOSTID=ANY SIGN=C2A8E714DEB4
+FEATURE devel_real_network vtech 3.0 permanent uncounted 6F7A3FBD910C \
+	 HOSTID=ANY SIGN=C70A58BA8F9A
+FEATURE devel_hindsight vtech 3.0 permanent uncounted 3F6E7DC0B7C3 \
+	 HOSTID=ANY SIGN=AA3AC494463A
+FEATURE p_modelbuilder vtech 3.0 permanent uncounted 815A677DF971 \
+	 VENDOR_STRING="Tc;Gc;Ujalbe" HOSTID=ANY SIGN=6660F3A4A584
+FEATURE host_rh6-x86-64 vtech 3.0 permanent uncounted DC1A9C7DAC9C \
+	 VENDOR_STRING=model HOSTID=ANY SIGN=2FE8D2083D84
+FEATURE host_win32-x86 vtech 3.0 permanent uncounted 5C4A52A06F9D \
+	 VENDOR_STRING=model HOSTID=ANY SIGN=13F6ED742462
+FEATURE host_rh6-x86 vtech 3.0 permanent uncounted 9CF9DE97C8BC \
+	 VENDOR_STRING=model HOSTID=ANY SIGN=696B729871E2
+FEATURE host_sol7-v9 vtech 3.0 permanent uncounted BFF237F03748 \
+	 VENDOR_STRING=model HOSTID=ANY SIGN=6883BDFA579C
+FEATURE builder vtech 3.0 permanent uncounted 9273B6A8282A \
+	 VENDOR_STRING=model HOSTID=ANY SIGN=3EA4541465EC
+
+FEATURE simics vtech 2.0 permanent uncounted 275F2CC95E9F \
+	 VENDOR_STRING=comm_multi HOSTID=ANY ISSUER="SSG Team" SIGN=F1A2BBCCC00A
+FEATURE builder vtech 2.0 permanent uncounted C0A3EDAEA77A \
+	 VENDOR_STRING=comm_multi HOSTID=ANY ISSUER="SSG Team" SIGN=9886B5FAF7C0
+FEATURE v9-ooo_on_rh6-x86 vtech 2.0 permanent uncounted DFB7713AC5E7 \
+	 VENDOR_STRING=comm_multi HOSTID=ANY ISSUER="SSG Team" SIGN=D0E2AD327DF6
+FEATURE v9-ooo_on_sol7-v9 vtech 2.0 permanent uncounted EF083F77F8E4 \
+	 VENDOR_STRING=comm_multi HOSTID=ANY ISSUER="SSG Team" SIGN=EE5B96064414
+FEATURE v9-ooo_on_win32-x86 vtech 2.0 permanent uncounted 05ECD333BA53 \
+	 VENDOR_STRING=comm_multi HOSTID=ANY ISSUER="SSG Team" SIGN=4AFF6DD84096
+FEATURE v9-ooo_on_rh6-x86-64 vtech 2.0 permanent uncounted 5FEF2BFFB791 \
+	 VENDOR_STRING=comm_multi HOSTID=ANY ISSUER="SSG Team" SIGN=B4AD2C94E306
+FEATURE x86-ooo_on_rh6-x86 vtech 2.0 permanent uncounted 4480694F79C0 \
+	 VENDOR_STRING=comm_multi HOSTID=ANY ISSUER="SSG Team" SIGN=684F1D30076A
+FEATURE x86-ooo_on_sol7-v9 vtech 2.0 permanent uncounted E387D81DC88B \
+	 VENDOR_STRING=comm_multi HOSTID=ANY ISSUER="SSG Team" SIGN=C3F88B48934E
+FEATURE x86-ooo_on_win32-x86 vtech 2.0 permanent uncounted 0861C536E481 \
+	 VENDOR_STRING=comm_multi HOSTID=ANY ISSUER="SSG Team" SIGN=100A80B4FB44
+FEATURE x86-ooo_on_rh6-x86-64 vtech 2.0 permanent uncounted CC1B8149B4F6 \
+	 VENDOR_STRING=comm_multi HOSTID=ANY ISSUER="SSG Team" SIGN=AB15011EEED2
+FEATURE x86-64-ooo_on_rh6-x86 vtech 2.0 permanent uncounted AEC8ECD10C29 \
+	 VENDOR_STRING=comm_multi HOSTID=ANY ISSUER="SSG Team" SIGN=031A804C4FBE
+FEATURE x86-64-ooo_on_sol7-v9 vtech 2.0 permanent uncounted 1D153B79CB5E \
+	 VENDOR_STRING=comm_multi HOSTID=ANY ISSUER="SSG Team" SIGN=8FF110C42934
+FEATURE x86-64-ooo_on_win32-x86 vtech 2.0 permanent uncounted 009025059149 \
+	 VENDOR_STRING=comm_multi HOSTID=ANY ISSUER="SSG Team" SIGN=C6100776C9FC
+FEATURE x86-64-ooo_on_rh6-x86-64 vtech 2.0 permanent uncounted 49A8038E165B \
+	 VENDOR_STRING=comm_multi HOSTID=ANY ISSUER="SSG Team" SIGN=5C522F3AE2DC

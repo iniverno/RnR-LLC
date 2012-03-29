@@ -1,0 +1,251 @@
+
+
+/*
+ * $Id: Sequencer.h 1.70 2006/09/27 14:56:41-05:00 bobba@s1-01.cs.wisc.edu $
+ *
+ * Description: 
+ *
+ */
+
+#ifndef PREFETCHER_H
+#define PREFETCHER_H
+
+#include "Global.h"
+#include "RubyConfig.h"
+#include "Consumer.h"
+#include "CacheRequestType.h"
+#include "AccessModeType.h"
+#include "GenericMachineType.h"
+#include "PrefetchBit.h"
+#include "Map.h"
+
+class DataBlock;
+class AbstractChip;
+class CacheMsg;
+class Address;
+class MachineID;
+
+#define PDFCM_HT_bits (14)
+#define PDFCM_HT_size (1 << PDFCM_HT_bits)
+#define PDFCM_HT_mask (PDFCM_HT_size - 1)
+#define PDFCM_DT_bits (9)
+#define PDFCM_DT_size (1 << PDFCM_DT_bits)
+#define PDFCM_DT_mask (PDFCM_DT_size - 1)
+
+#define DS_HT_bits (L2_CACHE_NUM_SETS_BITS)
+#define DS_HT_size (1 << DS_HT_bits)
+#define DS_HT_mask (DS_HT_size - 1)
+#define DS_DT_bits (9)
+#define DS_DT_size (1 << DS_DT_bits)
+#define DS_DT_mask (DS_DT_size - 1)
+
+
+   typedef struct PDFCM_HT_entry PDFCM_HT_entry;
+    struct PDFCM_HT_entry { 
+      Address PC;		// address of the memory access instruction
+      Address last_addr;		// last address that missed the cache
+      unsigned short history;		// hashed history of deltas
+      char count;			// Confidence counter
+      char tipo;
+      char proc;
+   };
+   	//
+   
+   typedef struct PDFCM_DT_entry PDFCM_DT_entry;
+    struct PDFCM_DT_entry {
+      short delta;			// delta between consecutive addresses	
+   };   
+   
+      typedef struct DS_HT_entry DS_HT_entry;
+    struct DS_HT_entry { 
+      int set;
+      long int last_addr;		// last address that missed the cache
+      unsigned short history;		// hashed history of deltas
+      char count;			// Confidence counter
+      char tipo;
+      char proc;
+   };
+   	//
+   
+   typedef struct DS_DT_entry DS_DT_entry;
+    struct DS_DT_entry {
+      short delta;			// delta between consecutive addresses	
+   };   
+
+class Bufcir {
+    public:
+
+      Vector <Address> array;
+  
+      int first, next,size;
+
+		bool esta(Address a) {
+			for(int i=0;i<32;i++) if(array[i]==a) return true;
+			return false;
+		}
+      Bufcir () {
+          array.setSize (32);
+          first = 0;
+          next = 0;
+          size=0;
+      }
+
+      bool empty () {
+        return first == next && size==0;
+      }
+      
+      bool full () {
+        return first == next && size==32;
+      }
+      
+      void insert (Address node) {
+        if(++next >= 32) next=0;
+        array[next] = node;
+        size++;       
+    }
+	
+     Address remove () {
+      
+         if(++first >= 32) first=0;
+         size--;
+        return array[first];
+    } 
+};
+
+
+class Prefetcher : public Consumer {
+public:
+  // Constructors
+  Prefetcher(AbstractChip* chip_ptr, int version);
+
+  // Destructor
+  ~Prefetcher();
+  
+  // Public Methods
+  void wakeup(); // Used only for deadlock detection 
+
+  void firstUse(Address addr, Address addr, int tipo);
+  void miss(Address addr, Address addr, int tipo, MachineID node);
+  void stats(int t);
+  void stats2(int t, MachineID node);
+  void printStats(ostream& out);
+  void clearStats();
+  void print(ostream& out) const;
+  static void printConfig(ostream& out);
+  
+  
+
+private:
+  // Private Methods
+ 
+
+  // Private copy constructor and assignment operator
+ // Prefetcher(const Prefetcher& obj);
+  //Prefetcher& operator=(const Prefetcher& obj);
+  
+  // Data Members (m_ prefix)
+  AbstractChip* m_chip_ptr;
+
+  Consumer* m_consumer_ptr;
+
+  // indicates what processor on the chip this sequencer is associated with
+  int m_version;
+  int m_adapt;
+  
+  MachineID m_requestor;  //guarda qué máquina provocó el fallo
+
+   long int numOfHits, numOfMisses;
+      
+      
+   //Lo del adaptativo (por epoca)
+   int m_metodo;
+   int degrees[13];
+   int degree_index;
+   int degree_incr;
+   long int next_stop;
+   long int inst_ant_par;
+   long int inst_ant_tot;
+   
+    //mecanismo dinámico de elección de prebuscador
+   int m_alterna;
+   int m_test;
+   int m_etapa_actual;
+   long m_ultima_epoca;
+  
+   
+// SEQT Degree Automaton (SDA)
+  
+   
+   Address m_last_addr;
+   int m_stride;
+   int m_st_degree;
+   int m_st_base_degree;
+   Address m_last_pc;
+   
+     
+   
+   //PDCFM
+   // PDFCM Degree Automaton (PDA)
+   unsigned short m_gen_history, m_pref_history;
+   Address m_old_addr;
+   Address m_gen_last_addr, m_pref_last_addr;
+   
+   int m_PDA_degree;
+   int  m_PDA_base_degree;
+   int m_flag_cabeza;
+   MachineID m_node; //core que hace la petición
+   
+   PDFCM_HT_entry * PDFCM_HT; 	
+   PDFCM_DT_entry * PDFCM_DT; 	
+    
+  
+   
+    //PDMFC methods
+    
+  unsigned short PDFCM_hash (unsigned short old_history, short delta);
+  Address PDFCM_predict_next ();
+  int PDFCM_update_and_predict ();
+  
+  //##########################
+  // stats
+  
+  long m_sent_prefetches;
+  
+  long m_harmful_prefetches;
+  long m_harmless_prefetches;
+  
+  long m_useful_prefetches;
+  long m_useless_prefetches;
+  
+  long m_ext_harmful_prefetches;
+  
+  // array de contadores para la clasificación de las prebúsquedas
+  Vector <int64> cont;
+  Vector <int64> utiles;
+  Vector <int64> inutiles;
+  Vector <int64> insertadas;
+  Vector <int64> tratadas;
+  
+  Bufcir buffer;
+  
+  int m_tipo;
+};
+
+// Output operator declaration
+ostream& operator<<(ostream& out, const Prefetcher& obj);
+
+// ******************* Definitions *******************
+
+// Output operator definition
+extern inline 
+ostream& operator<<(ostream& out, const Prefetcher& obj)
+{
+  obj.print(out);
+  out << flush;
+  return out;
+}
+
+
+
+#endif //PREFETCHER_H
+

@@ -1,0 +1,14 @@
+﻿read-configuration "/extra/gaz/users/jalbe/checkpoints/dedup-simmedium-16p-roi.check"
+
+instruction­fetch­mode instruction­fetch­trace
+
+istc­disable
+dstc­disable
+cpu­switch­time 1
+load­module ruby
+ruby0.setparam g_NUM_PROCESSORS 16
+ruby0.setparam g_PROCS_PER_CHIP 16
+ruby0.init
+c
+ruby0.dump­stats estadisticas.txt
+

@@ -1,0 +1,215 @@
+
+/*
+    Copyright (C) 1999-2005 by Mark D. Hill and David A. Wood for the
+    Wisconsin Multifacet Project.  Contact: gems@cs.wisc.edu
+    http://www.cs.wisc.edu/gems/
+
+    --------------------------------------------------------------------
+
+    This file is part of the SLICC (Specification Language for
+    Implementing Cache Coherence), a component of the Multifacet GEMS
+    (General Execution-driven Multiprocessor Simulator) software
+    toolset originally developed at the University of Wisconsin-Madison.
+                                                                                
+    SLICC was originally developed by Milo Martin with substantial
+    contributions from Daniel Sorin.
+
+    Substantial further development of Multifacet GEMS at the
+    University of Wisconsin was performed by Alaa Alameldeen, Brad
+    Beckmann, Jayaram Bobba, Ross Dickson, Dan Gibson, Pacia Harper,
+    Derek Hower, Milo Martin, Michael Marty, Carl Mauer, Michelle Moravan,
+    Kevin Moore, Manoj Plakal, Daniel Sorin, Haris Volos, Min Xu, and Luke Yen.
+
+    --------------------------------------------------------------------
+
+    If your use of this software contributes to a published paper, we
+    request that you (1) cite our summary paper that appears on our
+    website (http://www.cs.wisc.edu/gems/) and (2) e-mail a citation
+    for your published paper to gems@cs.wisc.edu.
+
+    If you redistribute derivatives of this software, we request that
+    you notify us and either (1) ask people to register with us at our
+    website (http://www.cs.wisc.edu/gems/) or (2) collect registration
+    information and periodically send it to us.
+
+    --------------------------------------------------------------------
+
+    Multifacet GEMS is free software; you can redistribute it and/or
+    modify it under the terms of version 2 of the GNU General Public
+    License as published by the Free Software Foundation.
+
+    Multifacet GEMS is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with the Multifacet GEMS; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+    02111-1307, USA
+
+    The GNU General Public License is contained in the file LICENSE.
+
+### END HEADER ###
+*/
+/*
+ * $Id$
+ *
+ */
+
+
+machine(VCache, "MI Victim Cache CMP") {
+
+  // NODE L1 CACHE
+  // From this node's L1 cache TO the network
+  // a local L1 -> this L2 bank, currently ordered with directory forwarded requests
+  // a local L1 -> this L2 bank
+  MessageBuffer dataFromVCache, network="To", virtual_network="3", ordered="false";
+  MessageBuffer L1ToVCache, network="From", virtual_network="3", ordered="false";
+  
+  
+  // To this node's L1 cache FROM the network
+   // a L2 bank -> this L1
+  MessageBuffer requestToVCache, network="From", virtual_network="5", ordered="true";
+  
+  // STATES
+  enumeration(State, desc="Cache states", default="VCache_State_V_I") {
+    // Base states
+    V_NP, desc="Not present in either cache";
+    V_I, desc="a L1 cache entry Idle";
+    V_S, desc="a L1 cache entry Shared";
+    V_M, desc="a L1 cache entry Modified", format="!b";
+
+   
+  }
+
+  // EVENTS
+  enumeration(Event, desc="Cache events") {
+    // L1 events
+    VPush,           desc="almacenamos el dato en la victim";
+    Req, desc="Miramos si lo tiene la victim";
+    // L1 is required to send response to the L2 immediately
+    V_INV, "INV", desc="L1 Invalidation of M data", format="!r";
+    V_Replacement,  desc="L1 Replacement", format="!r";    
+    // Currently same as replacement, request initiated when block is in the wrong L1 cache
+    V_to_L1,    desc="on-chip L1 cache must write back to shared L2";
+  }
+
+  // TYPES
+
+  // CacheEntry
+  structure(Entry, desc="...", interface="AbstractCacheEntry" ) {
+    State CacheState,        desc="cache state";
+    DataBlock DataBlk,       desc="data for the block";
+  }
+
+  // TBE fields
+  structure(TBE, desc="...") {
+    Address Address,              desc="Physical address for this TBE";
+    State TBEState,        desc="Transient state";
+    DataBlock DataBlk,                desc="Buffer for the data block";
+    bool isPrefetch,       desc="Set if this was caused by a prefetch";
+  }
+
+  external_type(CacheMemory) {
+    bool cacheAvail(Address);
+    Address cacheProbe(Address);
+    void allocate(Address);
+    void deallocate(Address);
+    Entry lookup(Address);
+    void changePermission(Address, AccessPermission);
+    bool isTagPresent(Address);
+  }
+
+  external_type(TBETable) {
+    TBE lookup(Address);
+    void allocate(Address);
+    void deallocate(Address);
+    bool isPresent(Address);
+  }
+
+ 
+  CacheMemory VcacheMemory, template_hack="<VCache_Entry>", constructor_hack='V_CACHE_NUM_SETS_BITS,V_CACHE_ASSOC,MachineType_VCache,int_to_string(i)+"_V"';
+
+  int cache_state_to_int(State state);
+
+  // inclusive cache returns L1 entries only
+  Entry getVCacheEntry(Address addr), return_by_ref="yes" {
+    if (VcacheMemory.isTagPresent(addr)) {
+      return VcacheMemory[addr];
+    } 
+  }
+
+  bool isVCacheTagPresent(Address addr) {
+    return (VcacheMemory.isTagPresent(addr));
+  }
+
+  State getState(Address addr) {
+    if((VcacheMemory.isTagPresent(addr)) == true){
+      DEBUG_EXPR(id);
+      DEBUG_EXPR(addr);
+    }
+    assert((VcacheMemory.isTagPresent(addr) ) == false);
+
+   if (isVCacheTagPresent(addr)) {
+      return getVCacheEntry(addr).CacheState;
+    }
+    return State:V_NP;
+  }
+
+  string getStateStr(Address addr) {
+    return VCache_State_to_string(getState(addr));
+  }
+
+  // when is this called?
+  void setState(Address addr, State state) {
+    assert((VcacheMemory.isTagPresent(addr) ) == false);
+
+    // MUST CHANGE
+   
+
+    if (isVCacheTagPresent(addr)) {
+      getVCacheEntry(addr).CacheState := state;
+    
+      // Set permission  
+      
+    }
+  }
+  // ** OUT_PORTS **
+  // All ports are to the same CMP network, queue id numbers determine IntraChip Switch location
+
+  out_port(dataIntraChipVNetwork_out, ResponseMsg, dataFromVCache);
+
+  // Response IntraChip L1 Network - response msg to this L1 cache
+  in_port(dataIntraChipVNetwork_in, ResponseMsg, L1ToVCache) {
+    if (dataIntraChipVNetwork_in.isReady()) {
+      peek(dataIntraChipVNetwork_in, ResponseMsg) {
+        DEBUG_EXPR(in_msg.Address);
+        DEBUG_EXPR(in_msg.Destination);
+        DEBUG_EXPR(in_msg.SenderMachId);
+        DEBUG_EXPR(machineID);
+        assert(in_msg.Destination.isElement(machineID));
+        if(machineIDToMachineType(in_msg.SenderMachId) == MachineType:L1Cache) {
+          if(in_msg.Type == CoherenceResponseType:DATA) {
+            trigger(Event:VPush, in_msg.Address);  // L1 now has data in its desired state
+          } else {
+            error("Invalid L1 response type");
+          }
+        } else {
+          error("A non-L1 cache sent a response to a Victim cache");
+        }
+      }
+    }
+  }
+ 
+
+  
+  //*****************************************************
+  // TRANSITIONS
+  //*****************************************************
+
+
+}
+
+
+

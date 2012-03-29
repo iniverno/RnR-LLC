@@ -1,0 +1,6 @@
+../protocols/MESI_basic-msg.sm
+../protocols/MESI_basic-L2cache.sm
+../protocols/MESI_basic-L1cache.sm
+../protocols/MESI_basic-mem.sm
+../protocols/standard_CMP-protocol.sm
+

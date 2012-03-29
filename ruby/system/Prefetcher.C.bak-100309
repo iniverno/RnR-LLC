@@ -1,0 +1,632 @@
+
+/*
+ * Profiler.C
+ * 
+ * Description: See Profiler.h
+ *
+ * $Id$
+ *
+ */
+
+#include "Address.h"
+#include "Profiler.h"
+#include "CacheProfiler.h"
+#include "AddressProfiler.h"
+#include "System.h"
+#include "Network.h"
+#include "PrioHeap.h"
+#include "CacheMsg.h"
+#include "Driver.h"
+#include "Protocol.h"
+#include "util.h"
+#include "Map.h"
+#include "Debug.h"
+#include "MachineType.h"
+#include "TransactionInterfaceManager.h"
+#include "interface.h"
+#include "XactVisualizer.h"
+#include "XactProfiler.h"
+#include "RequestMsg.h"
+#include "RubySlicc_ComponentMapping.h"
+#include "RubySlicc_Util.h"
+#include "MessageBuffer.h"
+#include "Prefetcher.h"
+ 
+ Prefetcher::Prefetcher(AbstractChip* chip_ptr, int version)
+ {
+
+  if(isPrefetcher())
+  {
+    m_chip_ptr = chip_ptr;
+    m_version = version;
+  
+    m_alterna=0;
+  
+     m_metodo= prefetchMechanism(); 
+     m_adapt= adaptDegree();
+     
+     cout << "Mecanismo: " << m_metodo << endl;
+     //parte adaptativa
+     
+     //{0,1,2,3,4,6,8,12,16,24,32,48,64};
+     degrees[0]=0;
+     degrees[1]=1;
+     degrees[2]=2;
+     degrees[3]=3;
+     degrees[4]=4;
+     degrees[5]=5;
+     degrees[6]=6;
+     degrees[7]=8;
+     degrees[8]=10;
+     degrees[9]=12;
+     degrees[10]=16;    
+     
+     next_stop= 65536;
+     min_owner=0;
+     int i;
+     m_flag=0;
+     
+ 	for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++) {
+ 	  
+      degree_incr[j]=1;
+      
+      misses_ant_tot[j]=0;
+      misses_ant_par[j]=0;
+      
+      m_st_base_degree[j]=g_PREFETCH_DEGREE;
+      for(i=0;i<11 && degrees[i]!=g_PREFETCH_DEGREE;i++); 
+      degree_index[j]=i;
+      
+    }
+   cout << "y el grado es: " << g_PREFETCH_DEGREE << endl;
+   
+     //fin adaptativa
+     
+  if(m_metodo==2)
+    {
+      m_PDA_base_degree=prefetchDegree();
+      m_PDA_degree=0;
+      m_old_addr=Address(0);
+      m_gen_last_addr=Address(0);
+      m_pref_last_addr=Address(0);
+      m_flag_cabeza=0;
+      PDFCM_HT=(PDFCM_HT_entry *) calloc(PDFCM_HT_size, sizeof(PDFCM_HT_entry));
+      PDFCM_DT=(PDFCM_DT_entry *) calloc(PDFCM_DT_size, sizeof(PDFCM_DT_entry));       
+    } 
+      
+      m_stride= g_PAGE_INTERLEAVING ? 1 : RubyConfig::numberOfL2CachePerChip();
+      
+    
+    if(g_PAGE_INTERLEAVING) cout <<"el entralazado es por p‡gina" << endl;
+    else cout <<"el entralazado es por bloque" << endl;
+    
+     m_sent_prefetches=0;
+  cout << "Soy un prefetcher " << version << " bits: " << RubyConfig::numberOfL2CachePerChip() << endl;
+     
+     cont.setSize(40);
+     utiles.setSize(RubyConfig::numberOfProcsPerChip());
+     inutiles.setSize(RubyConfig::numberOfProcsPerChip());
+     tratadas.setSize(RubyConfig::numberOfProcsPerChip());
+     generadas.setSize(RubyConfig::numberOfProcsPerChip());
+     insertadasPAB.setSize(RubyConfig::numberOfProcsPerChip());
+     
+     
+     for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++) 
+     { 
+       
+       for(int k=0; k<11; k++) 
+       {
+         histo_degrees[j][k]=0;
+         cadenas_valor[j][k]=0;
+         cadenas_nelems[j][k]=0;
+       }
+       m_misses_sector[j]=0;
+       m_misses_1[j]=0;
+       insertadasPAB[j]=0; tratadas[j]=0; utiles[j]=0;inutiles[j]=0; generadas[j]=0;
+       misses_epoch_1[j]=10000000000000;
+       accesos_epoch_ref_proc[j]=0;
+     }
+     misses_epoch_1_global=10000000000000;
+     accesos_epoch_ref_global=0;
+     
+       for(int j=0; j< 40; j++)
+       	 cont[j]=0;
+       	 
+       	 
+    g_eventQueue_ptr->scheduleEvent(this, (1<<16));
+  }
+
+ }
+
+  // Destructor
+  Prefetcher::~Prefetcher(){0;}
+  #define MASK_16b (0xffff)
+
+
+
+  // Public Methods
+
+//###################################################
+  void Prefetcher::wakeup()
+  { 
+  Address predicted_address; 
+  //cout << next_stop << " a:" << g_system_ptr->getDriver()->getCycleCount(m_version) << " version: " << m_version << endl;
+  static int a=0;
+ 
+    //parte adaptativa 
+    if(m_adapt && next_stop <= g_system_ptr->getDriver()->getCycleCount(m_version))
+    {
+       
+     //cout << "p" << m_version << " " <<  g_system_ptr->getDriver()->getCycleCount(m_version)  << " m_st_base_degree[j]: " << misses_ant_par[0] << "\t" <<  m_misses - misses_ant_tot[0] << "\t" ;
+     //cout <<g_system_ptr->getDriver()->getCycleCount(m_version)  << "\t" << accesos_epoch_ref_global << "\t" <<  accesos_epoch_1_global_tot << "\t" << accesos_global << "\t" ;
+                  
+      if(g_TRACE_DEGREE) 
+      {
+        cout << "prebuscador " << m_version<<":\t";
+        for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++) cout << m_st_base_degree[j] << "\t";      
+        cout <<endl;
+      } 
+      for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++) histo_degrees[j][degree_index[j]]++;
+            
+      int aux=g_system_ptr->getDriver()->getCycleCount(m_version);
+      aux >>= 16;
+      aux <<= 16;
+      next_stop= aux + (1<<16); //sig parada
+      g_eventQueue_ptr->scheduleEvent(this, (1<<16));
+     
+      //automata 2b: cada epoca cambiamos el grado de todos los proc mirando el num de fallos total
+      //Adaptativo grado global
+       if(m_metodo==5)
+      {
+        for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++)
+        {
+        
+          //cambiamos el grado del que toca pero miramos los fallos de todos     
+          if(accesos_epoch_ref_global > accesos_global-accesos_epoch_1_global_tot )
+          //si vamos peor hay cambiar la pol’tica
+            degree_incr[i] *= -1;
+                
+          degree_index[i] += degree_incr[i];
+          if(degree_index[i] <0) degree_index[i]=0;
+          if(degree_index[i] >11) degree_index[i]=11;
+      
+          m_st_base_degree[i]=degrees[degree_index[i]];
+        }
+        
+        accesos_epoch_ref_global=accesos_global - accesos_epoch_1_global_tot;
+        accesos_epoch_1_global_tot=accesos_global;
+      } //metodo 5
+     
+      else if(m_metodo==10)
+      {       
+        
+        //cambiamos el grado del que toca pero miramos los fallos de todos     
+        //Hemos ido peor que en la epoca anterior --> cambiamos
+       
+       if(accesos_epoch_ref_global > accesos_global-accesos_epoch_1_global_tot )
+        { //si vamos peor hay cambiar la pol’tica
+          degree_incr[m_proc_cambia] *= -1;
+         
+          //cambiamos el grado ya
+          degree_index[m_proc_cambia] += degree_incr[m_proc_cambia];
+          if(degree_index[m_proc_cambia] <0) degree_index[m_proc_cambia]=0;
+          if(degree_index[m_proc_cambia] >11) degree_index[m_proc_cambia]=11;
+          
+          m_st_base_degree[m_proc_cambia]=degrees[degree_index[m_proc_cambia]]; 
+          if(min_owner==m_proc_cambia)
+            accesos_epoch_ref_global=accesos_global - accesos_epoch_1_global_tot;           
+          
+        } else
+        {
+        	accesos_epoch_ref_global=accesos_global - accesos_epoch_1_global_tot;
+           // accesos_epoch_1_global_tot=accesos_global;
+        	min_owner=m_proc_cambia;
+        }
+        accesos_epoch_1_global_tot=accesos_global;
+        
+        //misses_this_epoch_global=0;
+        
+        
+        //procesador que revisa su grado, en roundrobin
+        m_proc_cambia= (m_proc_cambia < RubyConfig::numberOfProcsPerChip()-1) ? m_proc_cambia+1 : 0;
+                
+        degree_index[m_proc_cambia] += degree_incr[m_proc_cambia];
+        if(degree_index[m_proc_cambia] <0) degree_index[m_proc_cambia]=0;
+        if(degree_index[m_proc_cambia] >11) degree_index[m_proc_cambia]=11;
+      
+        m_st_base_degree[m_proc_cambia]=degrees[degree_index[m_proc_cambia]];
+        
+        
+      } //metodo 10
+      else if(m_metodo==11)
+      {       
+        //cambiamos el grado del que toca pero miramos los fallos de todos     
+        //Hemos ido peor que en la epoca anterior --> cambiamos
+       
+       if(accesos_epoch_ref_global > accesos_global-accesos_epoch_1_global_tot )
+        { //si vamos peor hay cambiar la pol’tica
+          confianza[m_proc_cambia]--;
+          if(confianza[m_proc_cambia] <= 0)
+          {  
+            confianza[m_proc_cambia]=0;
+            degree_incr[m_proc_cambia] *= -1;
+          }
+         
+          //cambiamos el grado ya
+          degree_index[m_proc_cambia] += degree_incr[m_proc_cambia];
+          if(degree_index[m_proc_cambia] <0) degree_index[m_proc_cambia]=0;
+          if(degree_index[m_proc_cambia] >11) degree_index[m_proc_cambia]=11;
+          
+          m_st_base_degree[m_proc_cambia]=degrees[degree_index[m_proc_cambia]]; 
+          if(min_owner==m_proc_cambia)
+            accesos_epoch_ref_global=accesos_global - accesos_epoch_1_global_tot;           
+          
+        } else
+        {
+            confianza[m_proc_cambia]+=confianza[m_proc_cambia]<2 ? 1 : -1;
+        	accesos_epoch_ref_global=accesos_global - accesos_epoch_1_global_tot;
+           // accesos_epoch_1_global_tot=accesos_global;
+        	min_owner=m_proc_cambia;
+        }
+        accesos_epoch_1_global_tot=accesos_global;
+        
+        //misses_this_epoch_global=0;
+        
+        
+        //procesador que revisa su grado, en roundrobin
+        m_proc_cambia= (m_proc_cambia < RubyConfig::numberOfProcsPerChip()-1) ? m_proc_cambia+1 : 0;
+                
+        degree_index[m_proc_cambia] += degree_incr[m_proc_cambia];
+        if(degree_index[m_proc_cambia] <0) degree_index[m_proc_cambia]=0;
+        if(degree_index[m_proc_cambia] >11) degree_index[m_proc_cambia]=11;
+      
+        m_st_base_degree[m_proc_cambia]=degrees[degree_index[m_proc_cambia]];
+        
+        
+      } //metodo 11
+      else if(m_metodo==12)
+      {       
+        
+        //cambiamos el grado del que toca pero miramos los fallos del proc que le toca     
+        //Hemos ido peor que en la epoca anterior --> cambiamos
+       
+       if(accesos_epoch_ref_proc[m_proc_cambia] > accesos_proc[m_proc_cambia]-accesos_epoch_1_proc_tot[m_proc_cambia] )
+        { //si vamos peor hay cambiar la pol’tica
+          degree_incr[m_proc_cambia] *= -1;
+         
+          //cambiamos el grado ya
+          degree_index[m_proc_cambia] += degree_incr[m_proc_cambia];
+          if(degree_index[m_proc_cambia] <0) degree_index[m_proc_cambia]=0;
+          if(degree_index[m_proc_cambia] >11) degree_index[m_proc_cambia]=11;
+          
+          m_st_base_degree[m_proc_cambia]=degrees[degree_index[m_proc_cambia]]; 
+          if(min_owner==m_proc_cambia)
+            for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++)
+              accesos_epoch_ref_proc[j]=accesos_proc[j] - accesos_epoch_1_proc_tot[j];           
+          
+        } else
+        {
+        	for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++)
+              accesos_epoch_ref_proc[j]=accesos_proc[j] - accesos_epoch_1_proc_tot[j];     
+           // accesos_epoch_1_global_tot=accesos_global;
+        	min_owner=m_proc_cambia;
+        }
+        for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++)
+            accesos_epoch_1_proc_tot[j]=accesos_proc[j];
+        
+        //misses_this_epoch_global=0;
+        
+        
+        //procesador que revisa su grado, en roundrobin
+        m_proc_cambia= (m_proc_cambia < RubyConfig::numberOfProcsPerChip()-1) ? m_proc_cambia+1 : 0;
+                
+        degree_index[m_proc_cambia] += degree_incr[m_proc_cambia];
+        if(degree_index[m_proc_cambia] <0) degree_index[m_proc_cambia]=0;
+        if(degree_index[m_proc_cambia] >11) degree_index[m_proc_cambia]=11;
+      
+        m_st_base_degree[m_proc_cambia]=degrees[degree_index[m_proc_cambia]];
+        
+        
+      } //metodo 12
+      else if(m_metodo==13)
+      {       
+        
+       int64 aux=g_system_ptr->getProfiler()->getL2Accesos();
+        
+        //cambiamos el grado del que toca pero miramos los fallos de todos EN TODOS LOS BANCOS 
+        //Hemos ido peor que en la epoca anterior --> cambiamos
+       
+       if(accesos_epoch_ref_global > aux - accesos_epoch_1_global_tot )
+        { //si vamos peor hay cambiar la pol’tica
+          degree_incr[m_proc_cambia] *= -1;
+         
+          //cambiamos el grado ya
+          degree_index[m_proc_cambia] += degree_incr[m_proc_cambia];
+          if(degree_index[m_proc_cambia] <0) degree_index[m_proc_cambia]=0;
+          if(degree_index[m_proc_cambia] >11) degree_index[m_proc_cambia]=11;
+          
+          m_st_base_degree[m_proc_cambia]=degrees[degree_index[m_proc_cambia]]; 
+          if(min_owner==m_proc_cambia)
+            accesos_epoch_ref_global=aux - accesos_epoch_1_global_tot;           
+          
+        } else
+        {
+        	accesos_epoch_ref_global=aux - accesos_epoch_1_global_tot;
+           // accesos_epoch_1_global_tot=accesos_global;
+        	min_owner=m_proc_cambia;
+        }
+        accesos_epoch_1_global_tot=aux;
+        
+        //misses_this_epoch_global=0;
+        
+        
+        //procesador que revisa su grado, en roundrobin
+        m_proc_cambia= (m_proc_cambia < RubyConfig::numberOfProcsPerChip()-1) ? m_proc_cambia+1 : 0;
+                
+        degree_index[m_proc_cambia] += degree_incr[m_proc_cambia];
+        if(degree_index[m_proc_cambia] <0) degree_index[m_proc_cambia]=0;
+        if(degree_index[m_proc_cambia] >11) degree_index[m_proc_cambia]=11;
+      
+        m_st_base_degree[m_proc_cambia]=degrees[degree_index[m_proc_cambia]];
+        
+        
+      } //metodo 13
+      
+      
+      
+     // cout << "revision:" << m_version << " grado:" << m_PDA_base_degree << " ind:" << degree_index << " incr:"<< degree_incr<< endl;
+    } //parte adaptativa
+    
+    
+     
+  if(m_metodo==1 || m_metodo==3  || m_metodo==4 || m_metodo==5 || m_metodo==10 || m_metodo==11|| m_metodo==12  || m_metodo==13)  //SEQT
+  {
+  
+     Address aux3, aux2, aux=m_last_addr[m_proc_miss];
+     
+     //Direcci—n del siguiente bloque
+     //m_last_addr[m_proc_miss].setAddress( m_last_addr[m_proc_miss].maskLowOrderBits(RubyConfig::dataBlockBits()) + RubyConfig::dataBlockBytes()); 
+      //aux2=m_last_addr[m_proc_miss];      
+      
+      aux2.setAddress( m_last_addr[m_proc_miss].maskLowOrderBits(RubyConfig::dataBlockBits()) + m_stride*RubyConfig::dataBlockBytes()); 
+      aux3=aux2;
+      
+      aux.makePageAddress();
+      aux2.makePageAddress();
+      //Si la prebœsqueda va a una p‡gina distinta, no la queremos
+      
+     
+     if(aux.getAddress() == aux2.getAddress() &&  m_st_degree[m_proc_miss]>0)
+      {   
+       //buscamos la prebœsqueda en el buffer, si no est‡ la insertamos
+        RequestMsg out_msg;
+        
+        m_last_addr[m_proc_miss]=aux3;
+        
+        if(!buffer.esta(m_last_addr[m_proc_miss])) { 
+       //   cout << "insertamos2 : " << m_last_addr[m_proc_miss] << endl;
+          buffer.insert(m_last_addr[m_proc_miss], m_requestor); 
+          insertadasPAB[m_proc_miss]++;
+        }
+       if(!buffer.empty())
+       {
+        //extraemos la prebusqueda que toca del buffer 
+        Bufcir::nodo& uno=buffer.remove();
+       
+        (out_msg).m_Address = uno.addr;
+      
+        //CAMBIAR PARA A„ADIR ESCRITURA!!!  --> cambiado
+        (out_msg).m_Type = m_tipo==1 ? CoherenceRequestType_PREFS : CoherenceRequestType_PREFS;
+        (out_msg).m_MessageSize = MessageSizeType_Control;
+        (out_msg).m_RequestorMachId = uno.req;
+        
+        m_chip_ptr->m_L2Cache_prefetchQueue_vec[m_version]->enqueue(out_msg, 1);
+  	
+  
+        Time current_time = g_eventQueue_ptr->getTime();
+     
+          g_eventQueue_ptr->scheduleEvent(this, 1);
+  	      m_st_degree[m_proc_miss]--;
+  	    
+  	   } 	   
+  	  } // == &&
+  	  else m_st_degree[m_proc_miss]=0;
+  	  
+  }   
+  generadas[m_proc_miss]++;
+  
+} //wakeup
+  
+
+
+
+
+//##############################################
+
+  void Prefetcher::firstUse(Address addr, Address pc, int tipo)
+  {
+  //	cout << "firstUse " <<  int_to_string(g_eventQueue_ptr->getTime()) << endl;
+  Time current_time = g_eventQueue_ptr->getTime();
+  m_tipo=tipo;
+  //CAMBIAR!!
+  
+  
+  if(m_metodo==1)
+  {
+    m_st_degree[m_proc_miss]=m_st_base_degree[m_proc_miss];
+     m_last_addr[m_proc_miss]=Address(addr.maskLowOrderBits(RubyConfig::dataBlockBits()));
+    
+  } else if(m_metodo==2)
+  {
+    m_last_pc[m_proc_miss]=pc;
+    m_pref_last_addr=Address(addr.maskLowOrderBits(RubyConfig::dataBlockBits()));
+    m_flag_cabeza=1;
+  }
+
+    g_eventQueue_ptr->scheduleEvent(this, 1); 
+    
+  }
+  
+  
+  
+  //#############################################
+  
+  
+  void Prefetcher::miss(Address addr, Address pc, int tipo, MachineID node)
+  {
+    	// cout << "Prebuscador " <<  m_version << " addr:" << addr <<" @pc: " << pc << " node: " << node << " this: " << this << " ent:" << L1CacheMachIDToProcessorNum(node)<< endl;
+
+  Time current_time = g_eventQueue_ptr->getTime();
+  
+  
+  if(!g_ONLY_ONE_PREFETCHING || (g_ONLY_ONE_PREFETCHING && g_PROC_AISLADO==L1CacheMachIDToProcessorNum(node)))
+  {
+    m_requestor=node;
+  
+  //CAMBIAR PARA A„ADIR ESCRITURA!!!  --> cambiado
+
+    //Estad’sticas sobre el corte de secuencias de prebusqueda
+    cadenas_valor[m_proc_miss][degree_index[m_proc_miss]]+=m_st_degree[m_proc_miss];
+    cadenas_nelems[m_proc_miss][degree_index[m_proc_miss]]++;
+
+
+    m_tipo= tipo;
+    m_proc_miss=L1CacheMachIDToProcessorNum(node);
+    int sector, aux;
+    switch(m_metodo)
+    {
+  	
+      case 3:
+      case 4:
+      case 5:
+      case 9:
+      case 10:
+      case 11:
+      case 12:
+      case 13:
+  //seqt
+      case 1:    
+        m_st_degree[m_proc_miss]=m_st_base_degree[m_proc_miss];
+        m_last_addr[m_proc_miss]=Address(addr.maskLowOrderBits(RubyConfig::dataBlockBits()));
+        
+       break;
+   	  case 2:
+    // std::cout << "AAA: " << machineIDToVersion(node) << endl;
+        m_last_pc[m_proc_miss]=Address((pc.getAddress() << RubyConfig::procsPerChipBits()) + machineIDToVersion(node));
+        m_pref_last_addr=Address(addr.maskLowOrderBits(RubyConfig::dataBlockBits()));
+        m_flag_cabeza=1;
+     break;
+   	   
+   default:
+   break;
+  }
+	misses_this_epoch_global++;
+	misses_this_epoch[m_proc_miss]++;
+	m_misses++;
+	m_misses_1[m_proc_miss]++;
+	
+    g_eventQueue_ptr->scheduleEvent(this, 1);
+  }  //ONLY_ONE_PREFETCHING
+}
+  
+ 
+void Prefetcher::access(MachineID node)
+{
+  
+	accesos_proc[L1CacheMachIDToProcessorNum(node)]++;
+	accesos_global++;
+}
+void Prefetcher::print(ostream& out) const { 0;}
+  
+  void Prefetcher::printConfig(ostream& out)
+ {
+ 0;
+}
+
+//Si recibimos un:
+//mirar documento externo
+ void Prefetcher::stats(int t)
+ {
+   if(t<0 || t>21) {ERROR_MSG("Parametro fuera de rango");}
+   else
+     cont[t]++;
+  }
+
+
+ void Prefetcher::stats2(int t, MachineID node)
+ {
+ 
+   //cout << "stats2: " << node << endl;
+   int proc=L1CacheMachIDToProcessorNum(node);
+   if(t<0 || t>21) {ERROR_MSG("Parametro fuera de rango");}
+   else
+     switch(t)
+     {
+       case 0:
+         tratadas[proc]++;
+         break;
+       case 1:
+       case 2:
+         utiles[proc]++;
+         break;
+       case 3:
+         inutiles[proc]++;
+         break;
+       default:
+         break;
+     }
+  }
+
+void Prefetcher::clearStats()
+{
+
+   for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++) { generadas[j]=0; insertadasPAB[j]=0; tratadas[j]=0; utiles[j]=0;inutiles[j]=0; }
+    
+       for(int j=0; j< 40; j++)
+       	 cont[j]=0;
+  
+  
+}
+void Prefetcher::printStats(ostream& out)
+{
+  out << cont << endl;
+  if(g_PREFETCHER)
+  {
+  out << "prebuscador " << m_version<<" fallos+primeros usos: " << m_misses	 << endl;
+  out << "prebuscador " << m_version<<" generadas ideal: " << m_misses*g_PREFETCH_DEGREE << endl;  
+  out << "prebuscador " << m_version<<" generadas real: " << generadas << endl;
+  out << "prebuscador " << m_version<<" generadas real: " << insertadasPAB << endl;
+  out << "prebuscador " << m_version<< " tratadas: " << tratadas << endl;
+  out << "prebuscador " << m_version<<" utiles: " << utiles << endl;
+  out << "prebuscador " << m_version<<" inutiles: " << inutiles << endl;
+  
+  Vector <double> utilidad; utilidad.setSize(RubyConfig::numberOfProcsPerChip());
+  
+   for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++)  if(tratadas[j]!=0) utilidad[j]=(double)utiles[j] / (double)tratadas[j];
+   	
+  out << "prebuscador " << m_version << " utilidad: " << utilidad << endl;
+   out << "prebuscador " << m_version << " long media de la cadena restante por grado y proc:" << endl;
+   for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++) 
+   {
+     for(int k=0; k<11; k++) 
+       out << (double)cadenas_valor[j][k] / (double)cadenas_nelems[j][k] << "\t";
+     out << endl;
+  }
+  
+  
+  
+  out << "prebuscador " << m_version<<" grados:" << endl;
+  for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++)
+  {
+    for(int k=0; k<11; k++) out << histo_degrees[j][k] << "\t";
+    out << endl;
+  }
+  }
+  else
+  { out << "NO PREFETCHER" << endl; }
+  out << "========================="  << endl;
+}
+  // Private copy constructor and assignment operator
+ // Prefetcher::Prefetcher(const Prefetcher& obj) {0; }
+  //	Prefetcher::Prefetcher& operator=(const Prefetcher& obj)  {0; }
+  

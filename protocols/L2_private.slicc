@@ -1,0 +1,7 @@
+../protocols/L2_private-msg.sm
+../protocols/L2_private-L1cache.sm
+../protocols/L2_private-L2cache.sm
+../protocols/L2_private-dir.sm
+../protocols/standard_CMP-protocol.sm
+
+# protocol briefly described in doc/MSI_MOSI_CMP_directory_2level-protocol-description.txt

@@ -1,0 +1,7 @@
+../protocols/nowner-msg.sm
+../protocols/nowner-L1cache.sm
+../protocols/nowner-L2cache.sm
+../protocols/nowner-dir.sm
+../protocols/standard_CMP-protocol.sm
+
+# protocol briefly described in doc/MSI_MOSI_CMP_directory_2level-protocol-description.txt

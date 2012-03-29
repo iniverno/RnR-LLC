@@ -1,0 +1,6 @@
+../protocols/jorge-scmp-msg.sm
+../protocols/jorge-scmp-L2cache.sm
+../protocols/jorge-scmp-L1cache.sm
+../protocols/jorge-scmp-mem.sm
+../protocols/standard_CMP-protocol.sm
+

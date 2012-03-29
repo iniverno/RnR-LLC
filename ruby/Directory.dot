@@ -1,0 +1,17 @@
+digraph Directory { 
+NP -> S[label="GETS / GET_INSTR"] ;
+NP -> M[label="GETX_NotOwner"] ;
+I -> S[label="GETS / GET_INSTR"] ;
+I -> M[label="GETX_NotOwner"] ;
+S -> M[label="GETX_NotOwner"] ;
+O -> OO[label="GETS / GET_INSTR"] ;
+O -> OM[label="GETX_Owner / GETX_NotOwner"] ;
+O -> S[label="PUTX_Owner"] ;
+M -> MO[label="GETS / GET_INSTR"] ;
+M -> MM[label="GETX_NotOwner"] ;
+M -> I[label="PUTX_Owner"] ;
+OO -> O[label="FinalAck"] ;
+OM -> M[label="FinalAck"] ;
+MO -> O[label="FinalAck"] ;
+MM -> M[label="FinalAck
+}

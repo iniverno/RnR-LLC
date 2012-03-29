@@ -1,0 +1,22 @@
+# LCAC - abisko running Solaris 10.
+# $Id: abisko-sol10-run.simics,v 1.1 2008/02/18 18:19:33 xserrano Exp $
+
+# Some previous definitions.
+$cpu_class = "ultrasparc-iii-plus"
+$os = "solaris10"
+$num_cpus = 256
+$megs_per_cpu  = 128
+$freq_mhz = 75
+# $disk_size = 8513945600   # Mida original.
+script-branch {
+        wait-for-variable machine_defined
+        local $disk_new = (create-std-scsi-disk
+                scsi_id = 1
+                size = 10738155520
+        )
+        connect-components $scsi_bus $disk_new scsi-bus
+#        stop
+}
+# Load standard components.
+run-command-file abisko-common.simics
+

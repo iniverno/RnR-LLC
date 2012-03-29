@@ -1,0 +1,14 @@
+ext_node:L1Cache:0 int_node:0 link_latency:1 
+ext_node:L1Cache:1 int_node:1 link_latency:1 
+ext_node:L1Cache:2 int_node:2 link_latency:1 
+ext_node:L1Cache:3 int_node:3 link_latency:1 
+
+int_node:0 int_node:1 link_latency:1 link_weight:1
+
+int_node:2 int_node:3 link_latency:1 link_weight:1
+
+
+int_node:0 int_node:2 link_latency:1 link_weight:2
+
+int_node:1 int_node:3 link_latency:1 link_weight:2
+

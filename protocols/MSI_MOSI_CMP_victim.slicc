@@ -1,0 +1,8 @@
+../protocols/MSI_MOSI_CMP_victim-msg.sm
+../protocols/MSI_MOSI_CMP_victim-L1cache.sm
+../protocols/MSI_MOSI_CMP_victim-L2cache.sm
+../protocols/MSI_MOSI_CMP_victim-vcache.sm
+../protocols/MSI_MOSI_CMP_victim-dir.sm
+../protocols/standard_CMP-protocol.sm
+
+# protocol briefly described in doc/MSI_MOSI_CMP_victim_2level-protocol-description.txt

@@ -1,0 +1,52 @@
+# LCAC - abisko state file.
+# $Id: abisko-sol10.state,v 1.2 2008/02/18 18:28:44 xserrano Exp $
+
+OBJECT sim TYPE sim {
+	checkpoint_path: ("/home/jalbe/comun/gems/checkpoints")
+########################## Edit path accordingly
+}
+OBJECT sc TYPE serengeti-console {
+	time: "2002-06-04 22:39:00 UTC"
+}
+OBJECT sd0_image TYPE image {
+	files: (("/home/jalbe/comun/gems/simics/home/serengeti/system-sol10-root.disk.craff", "ro", 0, 0x1db5f0000, 0),
+                ("/home/jalbe/comun/gems/simics/home/serengeti/system-01.disk.craff", "ro", 0, 0x1fb788000, 0))
+}
+OBJECT nvci TYPE nvci {
+	diag_switchQ: "true"
+	power_cycles: ""
+	last_hardware_update: ""
+	hardware_revision: ""
+	security_badlogins: "0"
+	security_password: ""
+	security_mode: ""
+	oem_bannerQ: "true"
+	oem_banner: "Simics Serengeti System"
+	oem_logoQ: ""
+	oem_logo: ""
+	nvramrc: "devalias disk /ssm@0,0/pci@19,700000/scsi@2/disk@0,0"
+	use_nvramrcQ: "true"
+	silent_modeQ: "false"
+	screen_rows: ""
+	screen_columns: ""
+	ansi_terminalQ: ""
+	local_mac_addressQ: ""
+	boot_device: "disk"
+	diag_device: "disk"
+	boot_file: ""
+	diag_file: ""
+	error_reset_recovery: "none"
+	auto_bootQ: "true"
+	boot_command: "boot -v"
+	load_base: ""
+	input_device: "/sgcn"
+	output_device: "/sgcn"
+	fcode_debugQ: "true"
+	powerfail_time: ""
+	use_4xfcodeQ: "true"
+	scsi_initiator_id: ""
+	auto_boot_timeout: ""
+	secondary_diagQ: ""
+	reboot_command: "noop"
+}
+
