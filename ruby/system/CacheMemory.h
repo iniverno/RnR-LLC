@@ -142,12 +142,18 @@
 #include "L2Cache_Entry.h"
 
 #include "PerfectCacheMemory.h"
+
+#include "CirBuf.h"
+
 #include <vector>
 
 struct shadowEntry {
 	Address m_address;
 	uint64 m_nmisses;
 };
+
+class AbstractChip;
+
 
 template<class ENTRY>
 class CacheMemory {
@@ -195,6 +201,9 @@ public:
   // looks an address up in the cache
   ENTRY& lookup(const Address& address);
   const ENTRY& lookup(const Address& address) const;
+
+  int insertionFIFO(const Address& address);
+  void evictFIFO(const Address& address);
 
   // Get/Set permission of cache block
   AccessPermission getPermission(const Address& address) const;
@@ -296,6 +305,8 @@ private:
   Histogram  *m_histoReuseThread[16];
   
   CacheMemory* m_shadow;
+  
+  CirBuf* dataArray;
 
 };
 
@@ -466,12 +477,14 @@ CacheMemory<ENTRY>::CacheMemory(AbstractChip* chip_ptr, int numSetBits,
 
   if(m_version != -1) {
   	if (m_machType == MachineType_L2Cache) m_shadow = new CacheMemory(chip_ptr, numSetBits, g_TAM_SHADOW, MachineType_L2Cache, description, -1);  	
-
+	dataArray = new CirBuf(chip_ptr, g_BLOCKS_FIFO, version);
   } 
   else {
   	m_replacementPolicy_ptr = new LRUPolicyL2(m_cache_num_sets, m_cache_assoc, &m_cache);
   }
 
+  
+  
   cerr << "inic off" << endl;
 }
 
@@ -916,6 +929,31 @@ void CacheMemory<ENTRY>::allocateL2(const Address& address)
   ERROR_MSG("Allocate didn't find an available entry");
 }
 
+template<class ENTRY>
+inline 
+int CacheMemory<ENTRY>::insertionFIFO(const Address& address) 
+{
+  assert(address == line_address(address));
+  assert(isTagPresent(address));
+  DEBUG_EXPR(CACHE_COMP, HighPrio, address);	
+	
+	return dataArray->insert(address);
+
+  ERROR_MSG("Allocate didn't find an available entry");
+}
+
+template<class ENTRY>
+inline 
+void CacheMemory<ENTRY>::evictFIFO(const Address& address) 
+{
+  assert(address == line_address(address));
+  assert(isTagPresent(address));
+  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
+
+	dataArray->remove(address);
+
+  //ERROR_MSG("Allocate didn't find an available entry");
+}
 
 template<class ENTRY>
 inline 

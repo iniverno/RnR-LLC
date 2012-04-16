@@ -38,9 +38,9 @@ GenericRequestType Chip::convertToGenericType(CoherenceRequestType param_type)
                       if ((param_type == CoherenceRequestType_EXE_ACK)) {
                         return GenericRequestType_EXE_ACK;
                       } else {
-                        DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-msg.sm:153: ", param_type);
+                        DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-msg.sm:154: ", param_type);
 ;
-                                                cerr << "Runtime Error at ../protocols/MSI_MOSI_inclusive-msg.sm:154, Ruby Time: " << g_eventQueue_ptr->getTime() << ": " << ("invalid CoherenceRequestType") << ", PID: " << getpid() << endl;
+                                                cerr << "Runtime Error at ../protocols/MSI_MOSI_inclusive-msg.sm:155, Ruby Time: " << g_eventQueue_ptr->getTime() << ": " << ("invalid CoherenceRequestType") << ", PID: " << getpid() << endl;
 char c; cerr << "press return to continue." << endl; cin.get(c); abort();
 
 ;

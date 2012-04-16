@@ -155,6 +155,20 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     
     L2_IPI, desc="Desde SS habiendo recibido una preb en escritura";
     L2_IPSS, desc="Desde L2_IPS habiendo recibido una petici—n de L1";
+    
+    L2_INRM, desc="";
+    L2_INRMZ, desc="";
+    L2_NRMIT, desc="";
+    L2_NRMIV, desc="";
+    
+    L2_INRS, desc="";
+    L2_INRSZ, desc="";
+    L2_INRSI, desc="";
+    L2_NRSIV, desc="";
+    
+    L2_NRS, desc="";
+    L2_NRSS, desc="";
+    L2_NRMT, desc="";
   }
 
   // EVENTS
@@ -175,7 +189,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     L1_PUTS_old,             desc="an old L1 replacement of a shared block", format="!r";
 
 
- PrefetchS, desc="Una prebœsqueda de lectura";
+	PrefetchS, desc="Una prebœsqueda de lectura";
     
     PrefetchX, desc="Una prebœsqueda de escritura";
     
@@ -216,7 +230,8 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     Dir_WB_ack, "WB ack", desc="Writeback ack from dir";
     Dir_exe_ack, "Only copy", desc="Directory tells us we already have exclusive permission, go directly to MT state";
     
-    
+    // events of data array requests
+    Data_replacement, "data array replacement", desc="Replacement in the data array, Protocol has to move to only-TAG states";
 	
   }
 
@@ -251,6 +266,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     int RRPV, desc="interval prediction for RRIP algorithm";
     bool NRU, desc="";
     int sign, desc="sign for the SHiP algorithm";
+    int posFIFO, desc="Position of the data in the FIFO data array "; 
     
   }
 
@@ -297,6 +313,8 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     void setTimeLast(Address);
 	void addReused(Address);
 	void initialTouch(Address, NodeID);
+    void evictFIFO(Address);
+    int insertionFIFO(Address);
   }
 
   external_type(TBETable) {
@@ -304,6 +322,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     void allocate(Address);
     void deallocate(Address);
     bool isPresent(Address);
+    
   }
 
   TBETable L2_TBEs, template_hack="<L2Cache_TBE>";
@@ -454,6 +473,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   
  Prefetcher prefetcher, abstract_chip_ptr="true", constructor_hack="i";
 
+  MessageBuffer dataArrayReplQueue, ordered="true", abstract_chip_ptr="true";
   MessageBuffer prefetchQueue, ordered="true", abstract_chip_ptr="true";
   MessageBuffer prefResponseToL2CacheQueue,  ordered="false", abstract_chip_ptr="true";  // 
   MessageBuffer responseToL2CacheQueue,  ordered="false", abstract_chip_ptr="true";  // 
@@ -531,7 +551,8 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
       }
     }  // if not ready, do nothing
   }
-  
+
+ 
     // Forwarded Request from Directory
   in_port(forwardedRequestIntraChipL2Network_in, RequestMsg, forwardedRequestToL2Cache) {
     if(forwardedRequestIntraChipL2Network_in.isReady()) {
@@ -558,6 +579,25 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
           trigger(Event:Forwarded_PREFS, in_msg.Address);  // L2
         }  else if (in_msg.Type == CoherenceRequestType:PREFX) {
           trigger(Event:Forwarded_PREFX, in_msg.Address);  // L2
+        } else {
+          error("Invalid L2 forwarded request type");
+        }
+      }
+    }
+  }
+  
+    // replacement from the data array
+  in_port(dataArrayReplQueueNetwork_in, RequestMsg, dataArrayReplQueue) {
+    if(dataArrayReplQueueNetwork_in.isReady()) {
+      peek(dataArrayReplQueueNetwork_in, RequestMsg) {
+        DEBUG_EXPR(in_msg.Address);
+        DEBUG_EXPR(id);
+        DEBUG_EXPR(getState(in_msg.Address));
+        DEBUG_EXPR(in_msg.RequestorMachId);
+        DEBUG_EXPR(in_msg.Type);
+        //assert(in_msg.Destination.isElement(machineID));
+        if (in_msg.Type == CoherenceRequestType:DATA_REPL) {
+    	  trigger(Event:Data_replacement, in_msg.Address);  // Data array forces downgrade to onlyTAG
         } else {
           error("Invalid L2 forwarded request type");
         }
@@ -753,7 +793,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   }
     
   action(d_issuePUTX, "d", desc="Issue PUTX") {
-    assert(1==1); 
+        dram.i_request(address, 2, machineID, machineID);
   }
 
   // finalAck issued from the response queue
@@ -1843,8 +1883,33 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
 			L2cacheMemory.initialTouch(address, L1CacheMachIDToProcessorNum(in_msg.RequestorMachId));
 		}
   }
+
+  action(fjj_insertionDataArray, "\fjj_i", desc="") {
+		peek(L1RequestIntraChipL2Network_in, RequestMsg) {
+			L2cacheMemory[address].posFIFO := L2cacheMemory.insertionFIFO(address);
+		}
+  }
   
+  action(fjjb_insertionDataArrayFromRepl, "\fjjb_i", desc="") {
+		peek(dataArrayReplQueueNetwork_in, RequestMsg) {
+			L2cacheMemory[address].posFIFO := L2cacheMemory.insertionFIFO(address);
+		}
+  }
+  
+  action(fjj_removeDataArray, "\fjj_r", desc="") {
+        DEBUG_EXPR(address);
+        DEBUG_EXPR(id);
+        DEBUG_EXPR(getState(address));
+
+		L2cacheMemory.evictFIFO(address);
+  }
+  
+  action(fl_popDataReplQueue, "fl", desc="Pop incoming data replacement request queue") {
+    profileMsgDelay(2, dataArrayReplQueueNetwork_in.dequeue_getDelayCycles());
+  }
 	   
+
+
   //*****************************************************
   // TRANSITIONS
   //*****************************************************
@@ -1856,8 +1921,9 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   transition({L2_IS, L2_IPS,L2_IPX, L2_IPXZ ,L2_ISZ, L2_ISI, L2_IMV, L2_MV, L2_IM, L2_IMO, L2_IMI, L2_IMZ, L2_IMOI, L2_IMOZ, 
                 L2_SIV, L2_PSIV, L2_SIC, 
                 L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
-                L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV}, 
-  {L2_Replacement, L2_PrefetchS_Replacement, L2_PrefetchX_Replacement,L1_PUTX, L1_PUTX_last, L1_PUTS, L1_PUTS_last, L1_PUTX_old, L1_PUTS_old, }) {
+                L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
+                L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV}, 
+  {L2_Replacement, L2_PrefetchS_Replacement, L2_PrefetchX_Replacement,L1_PUTX, L1_PUTX_last, L1_PUTS, L1_PUTS_last, L1_PUTX_old, L1_PUTS_old, Data_replacement}) {
     z_stall;
   }
 
@@ -1882,15 +1948,16 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     l_popForwardedRequestQueue;
   }
 
-  transition({L2_NP,L2_I}, L1_GETS, L2_IS) {
+
+  
+transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
     uu_profileAccess;
     jjj_statsPrefetchLocal3;
     qq_allocateL2CacheBlock;
-        jjpc_savePC;
+    jjpc_savePC;
 	jjit_initialTouch;
 	
     ll_clearSharers;
-    //set_setMRU;
     nn_addSharer;
     i_allocateTBE;
     ss_recordGetSL1ID;
@@ -1902,36 +1969,9 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     jjpc_savePC;
     
     jj_popL1RequestQueue2;
-  }
-  
-  transition({L2_NP,L2_I}, PrefetchS, L2_IPS) {
-    
-    qq_allocateL2CacheBlock;
-    ll_clearSharers;
-    i_allocatePrefTBE;
-    jjj_recordCoreID;
-    ja_issuePREFETCH;
-    jjj_prefetchPC;
-    jjj_popPrefetchQueue;
-  }
+}
 
-  transition({L2_NP,L2_I}, L1_GET_INSTR, L2_IS) {
-    uu_profileAccess;
-    qq_allocateL2CacheBlock;
-        jjpc_savePC;
-	jjit_initialTouch;
-    ll_clearSharers;
-    //set_setMRU;
-    nn_addSharer;
-    i_allocateTBE;
-    ss_recordGetSL1ID;
-    f_issueGETINSTR;
-    //jaa_missToPrefetch;
-    uu_profileMiss;
-    jj_popL1RequestQueue2;
-  }
-
-  transition({L2_NP,L2_I}, {L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}, L2_IM) {  // UPGRADE possible because L2_Replacement have higher priority
+  transition({L2_NP,L2_I}, {L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}, L2_INRM) {  // UPGRADE possible because L2_Replacement have higher priority
     uu_profileAccess;
     qq_allocateL2CacheBlock;
         jjpc_savePC;
@@ -1949,112 +1989,6 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     jj_popL1RequestQueue2;
   }
   
-  transition({L2_NP,L2_I}, PrefetchX, L2_IPX) {  // UPGRADE possible because L2_Replacement have higher priority
-    qq_allocateL2CacheBlock;
-    ll_clearSharers;
-    i_allocatePrefTBE;
-    ja_issuePREFETCH;
-    jjj_recordCoreID;
-    //jjj_statsPrefetchLocal3;
-    //uu_profileMiss;
-    
-    jjj_popPrefetchQueue;
-  }
-  
-
-//Transitions from L2_IPS
-
- transition(L2_IPS, PrefData_ext_ack_0, L2_S) {
-    ju_writePrefetchDataFromResponseQueueToL2Cache;
-    //jjj_noteDWG;
-    //jc_finalAckToDirIfNeeded;
-    jj_deactiveBloom;
-    s_deallocatePrefTBE;
-    
-    jo_popIncomingPrefResponseQueue;
-  }
-
-  transition(L2_IPS, {L1_GETS,L1_GET_INSTR, L1_GETX}, L2_IPSS) {
-    //Esta acci—n env’a un mensaje al DIR para que actualice la petici—n
-    set_setMRU;
-    setTimeLast;
-    jj_addAccess;
-    ww_profileMissNoDir
-    t_sendUpgradePrefetch;
-    
-    //z_stall;
-  }
-  
-   transition(L2_IPS, L2_INV, L2_IPI) {  // could see an invalidate from the directory, but not Forwards
-    t_sendAckToInvalidator;
-    l_popForwardedRequestQueue;
-    }
-  
-  transition(L2_IPSS, PrefData_ext_ack_0, L2_S) {
-    ju_writePrefetchDataFromResponseQueueToL2Cache;
-    //jjj_noteDWG;
-    //jc_finalAckToDirIfNeeded;
-    jj_deactiveBloom;
-    s_deallocatePrefTBE;
-    jj_removeAccess;
-    jo_popIncomingPrefResponseQueue;
-  }
-  
-  transition(L2_IPSS, Data_ext_ack_0, L2_S) {
-    u_writeDataFromResponseQueueToL2Cache;
-    //jjj_noteDWG;
-    //c_finalAckToDirIfNeeded;
-    jj_deactiveBloom;
-    s_deallocatePrefTBE;
-    jj_removeAccess;
-    
-    jjj_popResponeDramQueue;
-  }
-
-  transition(L2_IPSS, {L1_GETS,L1_GET_INSTR, L1_GETX}) {
-    //Esta acci—n env’a un mensaje al DIR para que actualice la petici—n
-    
-    //t_sendUpgradePrefetch;
-    //jx_recycleRequest;
-    z_stall;
-    
-    //jj_popL1RequestQueue2;
-  }
-  
-   transition(L2_IPSS, L2_INV, L2_IPI) {  // could see an invalidate from the directory, but not Forwards
-    t_sendAckToInvalidator;
-    l_popForwardedRequestQueue;
-    }
- 
-  
- transition(L2_IPI, PrefData_ext_ack_0, L2_I) {
-    ju_writePrefetchDataFromResponseQueueToL2Cache;
-   // oo_issueLoadHitInv;
-    //jc_finalAckToDirIfNeeded;
-    jj_deactiveBloom;
-    s_deallocatePrefTBE;
-    jo_popIncomingPrefResponseQueue;
-  }
-  transition(L2_IPI, Data_ext_ack_0, L2_I) {
-    u_writeDataFromResponseQueueToL2Cache;
-   // oo_issueLoadHitInv;
-    //c_finalAckToDirIfNeeded;
-    jj_deactiveBloom;
-    s_deallocatePrefTBE;
-    jjj_popResponeDramQueue;
-  }
-
-  transition(L2_IPI, L2_INV) {  // could see an invalidate from the directory, but not Forwards
-    t_sendAckToInvalidator;
-    l_popForwardedRequestQueue;
-  }
-
-  transition(L2_IPI, {L1_GETS, L1_GET_INSTR, L1_GETX}) {  // stall all L1 requests
-    z_stall;
-  }
-
-  
-
 
 
 
@@ -2089,26 +2023,6 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   }
 
 
-
-  // Transitions from L2_ISZ
-  // could see L2_INVs or more L1 requests
-  // stall all L1 requests, wait for data
-  transition(L2_ISZ, L2_INV, L2_ISI) {  // could see an invalidate from the directory, but not Forwards
-    t_sendAckToInvalidator;
-    l_popForwardedRequestQueue;
-  }
-
-  transition(L2_ISZ, Data_ext_ack_0, L2_SS) {
-    u_writeDataFromResponseQueueToL2Cache;
-    h_issueLoadHit;
-    //c_finalAckToDirIfNeeded;
-    s_deallocateTBE;
-    jjj_popResponeDramQueue;
-  }
-
-  transition(L2_ISZ, {L1_GETS, L1_GET_INSTR, L1_GETX}) {
-    z_stall;
-  }
 
   // Transitions from L2_ISI, already sent the invalidate ack so can imediately go to I
   // - in ISI, could get data from the Proc whose GETX caused INV to go from IS to ISI
@@ -2432,6 +2346,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     jjj_statsPrefetchLocal2;
     jjj_statsPrefetchLocalS2;
     ji_marcaRepl;
+    fjj_removeDataArray;
     rr_deallocateL2CacheBlock;
    
   }
@@ -2498,6 +2413,10 @@ k_dataFromL2CacheToL1Requestor
   }
   
   
+  transition(L2_S, Data_replacement, L2_NRS) {
+    fl_popDataReplQueue;
+  }
+
   
 ////////////// 
 // SM
@@ -2598,12 +2517,15 @@ transition(L2_SSMV, Proc_int_ack) {
     z_stall;
   }  
 
-
+//======================================================
   // BASE STATE - SS
   // Transitions from SS, L1 copies
+//======================================================
+
   transition(L2_SS, L2_Replacement, L2_SIV) {
     i_allocateTBE;  // for internal request
     ji_marcaRepl;
+    fjj_removeDataArray;
     bbb_setPendingIntAcksToSharers;
     tt_issueSharedInvalidateIntL1copiesRequest;
   }
@@ -2614,8 +2536,6 @@ transition(L2_SSMV, Proc_int_ack) {
     bbb_setPendingIntAcksToSharersPref;
     tt_issueSharedInvalidatePIntL1copiesRequest;
   }
-  
-
   
   transition(L2_SS, L2_INV, L2_SIC) {
     i_allocateTBE;  // for internal request
@@ -2711,6 +2631,10 @@ transition(L2_SS, L1_GETX, L2_MV) {
     jj_popL1RequestQueue;
   }
 
+  transition(L2_SS, Data_replacement, L2_NRSS) {
+    fl_popDataReplQueue;
+  }
+
   // Transitions from SIC - Initiated by an invalidate
   transition(L2_SIC, Proc_int_ack) {
     aa_removeResponseSharer;
@@ -2791,6 +2715,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
   //transition(L2_M, L2_Replacement, L2_MIN) {
   transition(L2_M, L2_Replacement, L2_I) {
     //i_allocateTBE;
+    fjj_removeDataArray;
     ji_marcaRepl;
     d_issuePUTX;
     //x_copyDataFromL2CacheToTBE;
@@ -2805,11 +2730,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
     d_issuePUTX;
     //x_copyDataFromL2CacheToPrefTBE;
     rr_deallocateL2CacheBlock;
-  }
-
- 
-
- 
+  } 
 
   transition(L2_M, {L1_GETS, L1_GET_INSTR}, L2_SO) {  // FIXME FOR BETTER PERFORMANCE - an E state would be nice here
     uu_profileAccess;
@@ -2838,11 +2759,16 @@ transition(L2_SS, L1_GETX, L2_MV) {
 //    b_issueGETX;
 //hh_issueStoreHit;
 //s_deallocateTBE;
-k_dataFromL2CacheToL1Requestor;
+	k_dataFromL2CacheToL1Requestor;
 
     jjj_statsPrefetchLocal4;
     jab_firstUseToPrefetcherX;
     jj_popL1RequestQueue2;
+  }
+
+  transition(L2_M, Data_replacement, L2_NRS) {
+  	d_issuePUTX;
+    fl_popDataReplQueue;
   }
 
   // BASE STATE - MT
@@ -2850,6 +2776,7 @@ k_dataFromL2CacheToL1Requestor;
   transition(L2_MT, L2_Replacement, L2_MIV) {
     i_allocateTBE;
     ji_marcaRepl;
+    fjj_removeDataArray;
     bbb_setPendingIntAcksToSharers;
     v_issueInvalidateIntL1copyRequest;
   }
@@ -2861,9 +2788,6 @@ k_dataFromL2CacheToL1Requestor;
     bbb_setPendingIntAcksToSharersPref;
     v_issueInvalidatePIntL1copyRequest;
   }
- 
-
- 
   
   transition(L2_MT, {L1_GETS, L1_GET_INSTR}, L2_MO) {
     uu_profileAccess;
@@ -2903,6 +2827,11 @@ k_dataFromL2CacheToL1Requestor;
     jjj_keepReuseL1;
     jj_popL1RequestQueue;
   }
+
+  transition(L2_MT, Data_replacement, L2_NRMT) {
+    fl_popDataReplQueue;
+  }
+
 
   // Transitions from L2_MIV, waiting for local L1 response
   //transition(L2_MIV, Data_int_ack, L2_MIN) {
@@ -3107,12 +3036,13 @@ k_dataFromL2CacheToL1Requestor;
   transition(L2_O, L2_Replacement, L2_I){
     //i_allocateTBE;
     ji_marcaRepl;
+    fjj_removeDataArray;
     //x_copyDataFromL2CacheToTBE;
     d_issuePUTX;
     rr_deallocateL2CacheBlock;
   }
   
-  //transition(L2_O,L2_PrefetchS_Replacement, L2_POIN){
+  //transition(L2_O, L2_PrefetchS_Replacement, L2_POIN){
   transition(L2_O,L2_PrefetchS_Replacement, L2_I){
     //i_allocatePrefTBE;
     jis_marcaRepl;
@@ -3154,11 +3084,18 @@ k_dataFromL2CacheToL1Requestor
     jj_popL1RequestQueue2;
   }
 
+  transition(L2_O, Data_replacement, L2_NRS) {
+  	d_issuePUTX;
+    fl_popDataReplQueue;
+  }
+
+
   // BASE STATE - SO
   // Transitions from L2_SO, other valid L1 cached copies
   transition(L2_SO, L2_Replacement, L2_OIV){
     i_allocateTBE;
     ji_marcaRepl;
+    fjj_removeDataArray;
     x_copyDataFromL2CacheToTBE;
     bbb_setPendingIntAcksToSharers;
     tt_issueSharedInvalidateIntL1copiesRequest;
@@ -3271,7 +3208,12 @@ k_dataFromL2CacheToL1Requestor
     jjj_keepReuseL1;
     jj_popL1RequestQueue;
   }	
-
+  
+  transition(L2_SO, Data_replacement) {
+  	fjjb_insertionDataArrayFromRepl;
+    fl_popDataReplQueue;
+  }
+  
   // Transitions from L2_OIV
   // L2 replacement put us here, we must stall all L1 requests
 transition(L2_OIV, Proc_int_ack) {
@@ -3313,7 +3255,6 @@ transition(L2_OIV, Proc_int_ack) {
     z_stall;
   }
   
-  
   // transitions from L2_OIN
   // L2 replacement put us here, we must stall all L1 requests
   
@@ -3321,13 +3262,10 @@ transition(L2_OIV, Proc_int_ack) {
   transition(L2_OIN, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX, L1_GETS, L1_GET_INSTR}) {  // stall L1 requests
     z_stall;
   }
-  
-  
    
   transition(L2_POIN, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX, L1_GETS, L1_GET_INSTR}) {  // stall L1 requests
     z_stall;
-  }
-  
+  }  
   
   // transitions from L2_OIC
   // directory put us in this state, should not see any forwards
@@ -3350,7 +3288,6 @@ transition(L2_OIV, Proc_int_ack) {
   transition(L2_OIC, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX, L1_GETS, L1_GET_INSTR}) {  // stall L1 requests
     z_stall;
   }
-
 
   // Transitions from L2_OMV, 
   // int_acks needed
@@ -3391,6 +3328,360 @@ transition(L2_OMV, Proc_last_int_ack, L2_MT) {
   transition(L2_OM, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETS, L1_GET_INSTR, L1_GETX}) {  // must stall all L1 requests
     z_stall;
   }
+
+
+//**********************************
+  // BASE STATE - NRSS
+//**********************************
+
+  // Transitions from SS, L1 copies
+transition(L2_NRSS, L2_Replacement, L2_NRSIV) {
+    i_allocateTBE;  // for internal request
+    ji_marcaRepl;
+    bbb_setPendingIntAcksToSharers;
+    tt_issueSharedInvalidateIntL1copiesRequest;
+}
+  
+  
+transition(L2_NRSS, {L1_GETS, L1_GET_INSTR}, L2_SS) {
+	uu_profileAccess;
+	//i_allocateTBE;
+	k_dataFromL2CacheToL1Requestor
+	jsr_setReused;
+	fjj_insertionDataArray;
+	ww_profileMissNoDir;
+	set_setMRU;
+	setTimeLast;
+	nn_addSharer;
+	//ss_recordGetSL1ID;
+    //a_issueGETS;
+	jj_popL1RequestQueue2;
+}
+
+transition(L2_NRSS, L1_UPGRADE_no_others, L2_NRMT) {
+	uu_profileAccess;
+    
+	setTimeLast;
+	jsr_setReused;
+	set_setMRU;
+
+	k_dataFromL2CacheToL1Requestor
+	jj_popL1RequestQueue2;
+}
+
+transition(L2_NRSS, L1_GETX, L2_MV) {
+    uu_profileAccess;
+    jsr_setReused;
+    i_allocateTBE;  // for both ext. and int.
+    xx_recordGetXL1ID;
+    bbb_setPendingIntAcksToSharers;
+    vv_issueInvalidateOtherIntL1copiesRequest;  // for internal
+    set_setMRU;
+    fjj_insertionDataArray;
+    setTimeLast;
+    nn_addSharer;
+    //b_issueGETX;  // for data
+    //uu_profileMiss;
+    jj_popL1RequestQueue2;
+}
+
+transition(L2_NRSS, L1_UPGRADE, L2_MV) {
+    uu_profileAccess;
+    jsr_setReused;
+    i_allocateTBE;  // for both ext. and int.
+    xx_recordGetXL1ID;
+    ccc_setPendingIntAcksMinusOne;
+    vv_issueInvalidateOtherIntL1copiesRequest;  // for internal
+    set_setMRU;
+    fjj_insertionDataArray;
+    setTimeLast;
+    nn_addSharer;
+    //b_issueGETX;  // for data
+    //uu_profileMiss;
+    jj_popL1RequestQueue2;
+}
+
+transition(L2_NRSS, L1_PUTS) {
+	ww_profileMissNoDir;
+	w_sendPutAckToL1Cache;
+	kk_removeRequestSharer;
+	jj_popL1RequestQueue;
+}
+  
+transition(L2_NRSS, L1_PUTS_last, L2_NRS) {
+	ww_profileMissNoDir;
+	w_sendPutAckToL1Cache;
+	kk_removeRequestSharer;
+	j_set_setMRU;
+	jjj_keepReuseL1;
+	jj_popL1RequestQueue;
+}
+
+transition(L2_NRSIV, Proc_last_int_ack, L2_I) {
+	aa_removeResponseSharer;
+	r_decrementNumberOfPendingIntAcks;
+	jjj_keepReuseL1a;
+	o_popIncomingResponseQueue;
+	s_deallocateTBE;
+	rr_deallocateL2CacheBlock;
+}
+
+transition(L2_NRSIV, {L1_GETS, L1_GET_INSTR, L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX}) {   // stall on all L1 requests
+	z_stall;
+}
+    
+// ===============================================
+  // BASE STATE - NRS
+  // Transitions from S, no L1 copies
+// ===============================================
+transition(L2_NRS, L2_Replacement, L2_I) {
+	jjj_statsPrefetchLocal2;
+	jjj_statsPrefetchLocalS2;
+	ji_marcaRepl;
+	rr_deallocateL2CacheBlock;
+}
+
+transition(L2_NRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
+	uu_profileAccess;
+	i_allocateTBE;  
+	a_issueGETS;
+	ss_recordGetSL1ID;
+	jsr_setReused;
+	fjj_insertionDataArray;
+	jjj_statsPrefetchLocal; 
+	jjj_statsPrefetchLocalS;
+    
+	ww_profileMissNoDir;
+	set_setMRU;
+	nn_addSharer;
+	setTimeLast;
+	jj_popL1RequestQueue2;
+}
+
+
+transition(L2_NRS, L1_GETX, L2_IM) {
+    uu_profileAccess;
+    jsr_setReused;
+    jjj_statsPrefetchLocal;
+    jjj_statsPrefetchLocalS;
+    
+    set_setMRU;
+    fjj_insertionDataArray;
+    nn_addSharer;
+    setTimeLast;
+	i_allocateTBE;
+	xx_recordGetXL1ID;
+
+	b_issueGETX;
+//    uu_profileMiss;
+    jj_popL1RequestQueue2;
+}
+  
+/*****************************************************************/
+  // Transitions from L2_INRS
+  // could see L2_INVs or more L1 requests
+  transition(L2_INRS, L2_INV, L2_INRSI) {  // could see an invalidate from the directory, but not Forwards
+    t_sendAckToInvalidator;
+    l_popForwardedRequestQueue;
+  }
+
+  transition(L2_INRS, Data_ext_ack_0, L2_NRSS) {
+    //RnR u_writeDataFromResponseQueueToL2Cache;
+    h_issueLoadHit;
+    s_deallocateTBE;
+    jjj_popResponeDramQueue;
+  }
+ 
+  transition(L2_INRS, L1_GETX, L2_INRSZ) {  // don't go there, just go to stall state
+    z_stall;
+  }
+
+transition(L2_INRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
+	//qq_allocateL2CacheBlock;
+	ww_profileMissNoDir;
+    set_setMRU;
+    nn_addSharer;
+    //i_allocateTBE;
+    setTimeLast;
+    ss_recordGetSL1ID;
+    jj_popL1RequestQueue2;
+
+}
+
+
+
+  // Transitions from L2_INRSZ
+  // could see L2_INVs or more L1 requests
+  // stall all L1 requests, wait for data
+  transition(L2_INRSZ, L2_INV, L2_INRSI) {  // could see an invalidate from the directory, but not Forwards
+    t_sendAckToInvalidator;
+    l_popForwardedRequestQueue;
+  }
+
+  transition(L2_INRSZ, Data_ext_ack_0, L2_NRSS) {
+    //RnR u_writeDataFromResponseQueueToL2Cache;
+    h_issueLoadHit;
+    s_deallocateTBE;
+    jjj_popResponeDramQueue;
+  }
+
+  transition(L2_INRSZ, {L1_GETS, L1_GET_INSTR, L1_GETX}) {
+    z_stall;
+  }
+  
+
+//=============================================
+//  L2_INRM
+
+
+  transition(L2_INRM, {L1_GETS,L1_GET_INSTR}, L2_IMO) {
+    ww_profileMissNoDir;
+    set_setMRU;
+     nn_addSharer;
+   setTimeLast;
+    ss_recordGetSL1ID;
+    jj_popL1RequestQueue2;
+  }
+
+transition(L2_INRM, L1_GETX, L2_INRMZ) {  // don't go there, just go to stall state
+	z_stall;
+}
+  
+transition(L2_INRM, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_NRMT) {
+	u_writeDataFromResponseQueueToL2Cache;
+	hh_issueStoreHit;
+    //c_finalAckToDirIfNeeded;
+	s_deallocateTBE;
+	jjj_popResponeDramQueue;
+}
+
+transition(L2_INRM, Data_ext_ack_not_0) {
+	u_writeDataFromResponseQueueToL2Cache;
+	p_addNumberOfPendingExtAcks;
+	mm_rememberIfFinalAckNeeded;
+	jjj_popResponeDramQueue;
+}
+
+  // transistions from L2_IMZ
+  // just wait for all acks and data
+  // stall on all requests
+  // NOTE: A performance option might be possible to go into M state instead of MT
+  transition(L2_INRMZ, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_NRMT) {
+    u_writeDataFromResponseQueueToL2Cache;
+    hh_issueStoreHit;
+    //c_finalAckToDirIfNeeded;
+    s_deallocateTBE;
+    jjj_popResponeDramQueue;
+  }
+
+transition(L2_INRMZ, Data_ext_ack_not_0) {
+    u_writeDataFromResponseQueueToL2Cache;
+    p_addNumberOfPendingExtAcks;
+    mm_rememberIfFinalAckNeeded;
+    jjj_popResponeDramQueue;
+}
+
+//======================================================
+  // BASE STATE - NRMT
+  // Transitions from MT, M L1 copy
+//======================================================
+
+transition(L2_NRMT, L2_Replacement, L2_NRMIV) {
+	i_allocateTBE;
+	ji_marcaRepl;
+	bbb_setPendingIntAcksToSharers;
+	v_issueInvalidateIntL1copyRequest;
+}
+
+
+  
+transition(L2_NRMT, {L1_GETS, L1_GET_INSTR}, L2_MO) {
+    uu_profileAccess;
+    jsr_setReused;
+    ww_profileMissNoDir;
+    i_allocateTBE;
+    bbb_setPendingIntAcksToSharers;
+    g_issueDownGradeIntL1copiesRequest;
+    ss_recordGetSL1ID;
+    set_setMRU;
+    fjj_insertionDataArray;
+    setTimeLast;
+    nn_addSharer;
+    jj_popL1RequestQueue2;
+}
+
+transition(L2_NRMT, L1_GETX, L2_MIT) {
+    uu_profileAccess;
+    jsr_setReused;
+    ww_profileMissNoDir;
+    i_allocateTBE;
+    bbb_setPendingIntAcksToSharers;
+    v_issueInvalidateIntL1copyRequest;
+    set_setMRU;
+    fjj_insertionDataArray;
+    setTimeLast;
+    nn_addSharer;
+    xx_recordGetXL1ID;
+    jj_popL1RequestQueue2;
+  }
+
+
+
+
+//Option 1
+//  transition(L2_NRMT, L1_PUTX_last, L2_M) {
+//    ww_profileMissNoDir;
+//    w_sendPutAckToL1Cache;
+//    kk_removeRequestSharer;
+//    m_writeDataFromRequestQueueToL2Cache;
+//    j_set_setMRU;
+//    setTimeLast;
+//    jjj_keepReuseL1;
+//    jj_popL1RequestQueue;
+//  }
+
+//option 2
+transition(L2_NRMT, L1_PUTX_last, L2_NRS) {
+	w_sendPutAckToL1Cache;
+	kk_removeRequestSharer;
+	m_writeDataFromRequestQueueToL2Cache;
+    d_issuePUTX;
+    jj_popL1RequestQueue;
+}
+
+
+transition(L2_NRMIT, Data_int_ack, L2_NRMT) {
+    aa_removeResponseSharer;
+    jm_writeDataFromResponseQueueToL2Cache;
+    hh_issueStoreHit;  // internal requestor
+    s_deallocateTBE;
+    jjj_keepReuseL1a;
+    o_popIncomingResponseQueue;
+}
+
+  // stall all requests
+transition(L2_NRMIT, {Forwarded_GETS, Forwarded_PREFS,Forwarded_PREFX, Forwarded_GET_INSTR, Forwarded_GETX, L1_GETS, L1_GET_INSTR, L1_GETX}) {
+    z_stall;
+}
+
+transition(L2_NRMIV, Data_int_ack, L2_I) {
+    aa_removeResponseSharer;
+    jm_writeDataFromResponseQueueToL2Cache;
+    bb_dataFromL2CacheToGetSForwardIDs;  // likely won't send any messages
+    gg_dataFromL2CacheToGetXForwardID;  // likely won't send any messages
+    d_issuePUTX;
+    x_copyDataFromL2CacheToTBE;
+    jjj_keepReuseL1a;
+    rr_deallocateL2CacheBlock;
+    s_deallocateTBE
+    o_popIncomingResponseQueue;
+}
+
+
+transition(L2_NRMIV, {L1_GETS, L1_GET_INSTR, L1_GETX}) {   // stall on all L1 requests
+    z_stall;
+}
+
 
 
 }

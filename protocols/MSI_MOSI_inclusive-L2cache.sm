@@ -753,8 +753,11 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   }
     
   action(d_issuePUTX, "d", desc="Issue PUTX") {
-    assert(1==1); 
-  }
+    peek(L1RequestIntraChipL2Network_in, RequestMsg) {
+        L2cacheMemory[address].owner := in_msg.RequestorMachId;       
+        dram.i_request(address, 2, machineID, machineID);      
+    }
+   }
 
   // finalAck issued from the response queue
   action(c_finalAckToDirIfNeeded, "c", desc="Send FinalAck to dir if this is response to 3-hop xfer") {

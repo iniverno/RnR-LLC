@@ -173,6 +173,7 @@ SRC_CPP := \
 	StoreCache.C \
 	interface.C \
 	Prefetcher.C \
+	CirBuf.C \
 	Dram.C \
 	SHCTTable.C \
 	CacheMgr.C \

@@ -67,13 +67,14 @@ enumeration(CoherenceRequestType, desc="...") {
   PUTS,      desc="Put Shared";
   INV,       desc="INValidate";
   INV_S,     desc="INValidate the shared version";
-   INV_P,       desc="INValidate";
+  INV_P,       desc="INValidate";
   INV_S_P,     desc="INValidate the shared version";
   L1_DG,     desc="L1 cache DownGrade";
   WB_ACK,    desc="Write Back ACKnowledgment";
   EXE_ACK,   desc="EXclusivE ACKnowledgment";
   PREFS, desc="read prefetch";
   PREFX, desc="read prefetch";
+  DATA_REPL, desc="data has been evicted from the cache array";
 }
 
 // CoherenceResponseType

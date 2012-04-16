@@ -159,7 +159,8 @@ public:
   Vector < Dram* >  m_L2Cache_dram_vec;
   Vector < MessageBuffer* >  m_L2Cache_prefResponseToL2CacheQueue_vec;
   Vector < MessageBuffer* >  m_L2Cache_responseToL2CacheQueue_vec;
-  
+  Vector < MessageBuffer* >  m_L2Cache_dataArrayReplQueue_vec;
+
 protected:
   
   // Data Members (m_ prefix)

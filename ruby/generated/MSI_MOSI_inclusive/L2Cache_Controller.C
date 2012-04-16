@@ -300,12 +300,13 @@ void L2Cache_Controller::f_issueGETINSTR(const Address& addr)
 void L2Cache_Controller::d_issuePUTX(const Address& addr)
 {
   DEBUG_MSG(GENERATED_COMP, HighPrio,"executing");
-    if (ASSERT_FLAG && !(((1) == (1)))) {
-    cerr << "Runtime Error at ../protocols/MSI_MOSI_inclusive-L2cache.sm:756, Ruby Time: " << g_eventQueue_ptr->getTime() << ": " << "assert failure" << ", PID: " << getpid() << endl;
-char c; cerr << "press return to continue." << endl; cin.get(c); abort();
-
+  {
+    const RequestMsg* in_msg_ptr;
+    in_msg_ptr = dynamic_cast<const RequestMsg*>(((*(m_chip_ptr->m_L2Cache_L1RequestToL2Cache_vec[m_version]))).peek());
+    assert(in_msg_ptr != NULL);
+    ((((*(m_chip_ptr->m_L2Cache_L2cacheMemory_vec[m_version]))).lookup(addr))).m_owner = ((*in_msg_ptr)).m_RequestorMachId;
+    (((*(m_chip_ptr->m_L2Cache_dram_vec[m_version]))).i_request(addr, (2), m_machineID, m_machineID));
   }
-;
 }
 
 /** \brief Send FinalAck to dir if this is response to 3-hop xfer*/
@@ -316,7 +317,7 @@ void L2Cache_Controller::c_finalAckToDirIfNeeded(const Address& addr)
     const ResponseMsg* in_msg_ptr;
     in_msg_ptr = dynamic_cast<const ResponseMsg*>(((*(m_chip_ptr->m_L2Cache_responseToL2Cache_vec[m_version]))).peek());
     assert(in_msg_ptr != NULL);
-    DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:762: ", (*in_msg_ptr));
+    DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:765: ", (*in_msg_ptr));
 ;
     if (((machineIDToMachineType(((*in_msg_ptr)).m_SenderMachId)) == MachineType_L2Cache)) {
       {
@@ -326,7 +327,7 @@ void L2Cache_Controller::c_finalAckToDirIfNeeded(const Address& addr)
         (out_msg).m_SenderMachId = m_machineID;
         (((out_msg).m_Destination).add((map_Address_to_Directory(addr))));
         (out_msg).m_MessageSize = MessageSizeType_Control;
-        DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:770: ", out_msg);
+        DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:773: ", out_msg);
 ;
         ((*(m_chip_ptr->m_L2Cache_finalAckFromL2Cache_vec[m_version]))).enqueue(out_msg, L2_RESPONSE_LATENCY);
       }
@@ -342,7 +343,7 @@ void L2Cache_Controller::n_sendFinalAckIfThreeHop(const Address& addr)
     const ResponseMsg* in_msg_ptr;
     in_msg_ptr = dynamic_cast<const ResponseMsg*>(((*(m_chip_ptr->m_L2Cache_responseToL2Cache_vec[m_version]))).peek());
     assert(in_msg_ptr != NULL);
-    DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:779: ", (*in_msg_ptr));
+    DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:782: ", (*in_msg_ptr));
 ;
     if ((((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_isThreeHop == (true))) {
       {
@@ -352,7 +353,7 @@ void L2Cache_Controller::n_sendFinalAckIfThreeHop(const Address& addr)
         (out_msg).m_SenderMachId = m_machineID;
         (((out_msg).m_Destination).add((map_Address_to_Directory(addr))));
         (out_msg).m_MessageSize = MessageSizeType_Control;
-        DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:787: ", out_msg);
+        DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:790: ", out_msg);
 ;
         ((*(m_chip_ptr->m_L2Cache_finalAckFromL2Cache_vec[m_version]))).enqueue(out_msg, L2_RESPONSE_LATENCY);
       }
@@ -378,7 +379,7 @@ void L2Cache_Controller::mm_rememberIfFinalAckNeeded(const Address& addr)
 void L2Cache_Controller::h_issueLoadHit(const Address& addr)
 {
   DEBUG_MSG(GENERATED_COMP, HighPrio,"executing");
-  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:807: ", ((L2Cache_getL2CacheEntry(addr))).m_DataBlk);
+  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:810: ", ((L2Cache_getL2CacheEntry(addr))).m_DataBlk);
 ;
   if ((((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).isPresent(addr)) == (false)) || (((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_isPrefetch == (false)))) {
     {
@@ -387,7 +388,7 @@ void L2Cache_Controller::h_issueLoadHit(const Address& addr)
       (out_msg).m_Type = CoherenceResponseType_DATA;
       (out_msg).m_SenderMachId = m_machineID;
       (out_msg).m_Destination = ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_L1_GetS_IDs;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:815: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:818: ", (out_msg).m_Destination);
 ;
       (out_msg).m_DataBlk = ((L2Cache_getL2CacheEntry(addr))).m_DataBlk;
       (out_msg).m_MessageSize = MessageSizeType_Data;
@@ -401,7 +402,7 @@ void L2Cache_Controller::h_issueLoadHit(const Address& addr)
 void L2Cache_Controller::oo_issueLoadHitInv(const Address& addr)
 {
   DEBUG_MSG(GENERATED_COMP, HighPrio,"executing");
-  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:825: ", ((L2Cache_getL2CacheEntry(addr))).m_DataBlk);
+  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:828: ", ((L2Cache_getL2CacheEntry(addr))).m_DataBlk);
 ;
   if ((((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).isPresent(addr)) == (false)) || (((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_isPrefetch == (false)))) {
     {
@@ -410,7 +411,7 @@ void L2Cache_Controller::oo_issueLoadHitInv(const Address& addr)
       (out_msg).m_Type = CoherenceResponseType_DATA_I;
       (out_msg).m_SenderMachId = m_machineID;
       (out_msg).m_Destination = ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_L1_GetS_IDs;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:833: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:836: ", (out_msg).m_Destination);
 ;
       (out_msg).m_DataBlk = ((L2Cache_getL2CacheEntry(addr))).m_DataBlk;
       (out_msg).m_MessageSize = MessageSizeType_Data;
@@ -424,7 +425,7 @@ void L2Cache_Controller::oo_issueLoadHitInv(const Address& addr)
 void L2Cache_Controller::hh_issueStoreHit(const Address& addr)
 {
   DEBUG_MSG(GENERATED_COMP, HighPrio,"executing");
-  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:844: ", ((L2Cache_getL2CacheEntry(addr))).m_DataBlk);
+  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:847: ", ((L2Cache_getL2CacheEntry(addr))).m_DataBlk);
 ;
   if ((((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).isPresent(addr)) == (false)) || (((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_isPrefetch == (false)))) {
     {
@@ -433,7 +434,7 @@ void L2Cache_Controller::hh_issueStoreHit(const Address& addr)
       (out_msg).m_Type = CoherenceResponseType_DATA;
       (out_msg).m_SenderMachId = m_machineID;
       (((out_msg).m_Destination).add(((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_L1_GetX_ID));
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:852: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:855: ", (out_msg).m_Destination);
 ;
       (out_msg).m_DataBlk = ((L2Cache_getL2CacheEntry(addr))).m_DataBlk;
       (out_msg).m_MessageSize = MessageSizeType_Data;
@@ -447,7 +448,7 @@ void L2Cache_Controller::hh_issueStoreHit(const Address& addr)
 void L2Cache_Controller::pp_issueStoreHitInv(const Address& addr)
 {
   DEBUG_MSG(GENERATED_COMP, HighPrio,"executing");
-  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:862: ", ((L2Cache_getL2CacheEntry(addr))).m_DataBlk);
+  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:865: ", ((L2Cache_getL2CacheEntry(addr))).m_DataBlk);
 ;
   if ((((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).isPresent(addr)) == (false)) || (((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_isPrefetch == (false)))) {
     {
@@ -456,7 +457,7 @@ void L2Cache_Controller::pp_issueStoreHitInv(const Address& addr)
       (out_msg).m_Type = CoherenceResponseType_DATA_I;
       (out_msg).m_SenderMachId = m_machineID;
       (((out_msg).m_Destination).add(((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_L1_GetX_ID));
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:870: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:873: ", (out_msg).m_Destination);
 ;
       (out_msg).m_DataBlk = ((L2Cache_getL2CacheEntry(addr))).m_DataBlk;
       (out_msg).m_MessageSize = MessageSizeType_Data;
@@ -470,7 +471,7 @@ void L2Cache_Controller::pp_issueStoreHitInv(const Address& addr)
 void L2Cache_Controller::cc_issueStoreHitDG(const Address& addr)
 {
   DEBUG_MSG(GENERATED_COMP, HighPrio,"executing");
-  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:880: ", ((L2Cache_getL2CacheEntry(addr))).m_DataBlk);
+  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:883: ", ((L2Cache_getL2CacheEntry(addr))).m_DataBlk);
 ;
   if ((((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).isPresent(addr)) == (false)) || (((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_isPrefetch == (false)))) {
     {
@@ -479,7 +480,7 @@ void L2Cache_Controller::cc_issueStoreHitDG(const Address& addr)
       (out_msg).m_Type = CoherenceResponseType_DATA_S;
       (out_msg).m_SenderMachId = m_machineID;
       (((out_msg).m_Destination).add(((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_L1_GetX_ID));
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:888: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:891: ", (out_msg).m_Destination);
 ;
       (out_msg).m_DataBlk = ((L2Cache_getL2CacheEntry(addr))).m_DataBlk;
       (out_msg).m_MessageSize = MessageSizeType_Data;
@@ -503,7 +504,7 @@ void L2Cache_Controller::w_sendPutAckToL1Cache(const Address& addr)
       (out_msg).m_Type = CoherenceResponseType_ACK;
       (out_msg).m_SenderMachId = m_machineID;
       (((out_msg).m_Destination).add(((*in_msg_ptr)).m_RequestorMachId));
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:904: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:907: ", (out_msg).m_Destination);
 ;
       (out_msg).m_MessageSize = MessageSizeType_Control;
       ((*(m_chip_ptr->m_L2Cache_responseFromL2Cache_vec[m_version]))).enqueue(out_msg, L2_RESPONSE_LATENCY);
@@ -522,15 +523,15 @@ void L2Cache_Controller::ee_dataFromL2CacheToGetSIDs(const Address& addr)
       (out_msg).m_Type = CoherenceResponseType_DATA;
       (out_msg).m_SenderMachId = m_machineID;
       (out_msg).m_Destination = ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_Forward_GetS_IDs;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:921: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:924: ", (out_msg).m_Destination);
 ;
       (out_msg).m_DataBlk = ((L2Cache_getL2CacheEntry(addr))).m_DataBlk;
       (out_msg).m_NumPendingExtAcks = (0);
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:924: ", (out_msg).m_Address);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:927: ", (out_msg).m_Address);
 ;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:925: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:928: ", (out_msg).m_Destination);
 ;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:926: ", (out_msg).m_DataBlk);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:929: ", (out_msg).m_DataBlk);
 ;
       (out_msg).m_MessageSize = MessageSizeType_Data;
       ((*(m_chip_ptr->m_L2Cache_responseFromL2Cache_vec[m_version]))).enqueue(out_msg, L2_RESPONSE_LATENCY);
@@ -543,7 +544,7 @@ void L2Cache_Controller::ee_dataFromL2CacheToGetSIDs(const Address& addr)
       (out_msg).m_Type = CoherenceResponseType_DATA;
       (out_msg).m_SenderMachId = m_machineID;
       (out_msg).m_Destination = ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_L1_GetS_IDs;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:937: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:940: ", (out_msg).m_Destination);
 ;
       (out_msg).m_DataBlk = ((L2Cache_getL2CacheEntry(addr))).m_DataBlk;
       (out_msg).m_MessageSize = MessageSizeType_Data;
@@ -563,7 +564,7 @@ void L2Cache_Controller::bb_dataFromL2CacheToGetSForwardIDs(const Address& addr)
       (out_msg).m_Type = CoherenceResponseType_DATA;
       (out_msg).m_SenderMachId = m_machineID;
       (out_msg).m_Destination = ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_Forward_GetS_IDs;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:953: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:956: ", (out_msg).m_Destination);
 ;
       (out_msg).m_DataBlk = ((L2Cache_getL2CacheEntry(addr))).m_DataBlk;
       (out_msg).m_NumPendingExtAcks = (0);
@@ -584,7 +585,7 @@ void L2Cache_Controller::bb_dataFromL2CacheToGetSForwardIDsPref(const Address& a
       (out_msg).m_Type = CoherenceResponseType_DATA;
       (out_msg).m_SenderMachId = m_machineID;
       (out_msg).m_Destination = ((((*(m_chip_ptr->m_L2Cache_Pref_TBEs_vec[m_version]))).lookup(addr))).m_Forward_GetS_IDs;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:970: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:973: ", (out_msg).m_Destination);
 ;
       (out_msg).m_DataBlk = ((L2Cache_getL2CacheEntry(addr))).m_DataBlk;
       (out_msg).m_NumPendingExtAcks = (0);
@@ -607,13 +608,13 @@ void L2Cache_Controller::gg_dataFromL2CacheToGetXForwardID(const Address& addr)
       (((out_msg).m_Destination).add(((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_Forward_GetX_ID));
       (out_msg).m_DataBlk = ((L2Cache_getL2CacheEntry(addr))).m_DataBlk;
       (out_msg).m_NumPendingExtAcks = ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_ForwardGetX_AckCount;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:989: ", (out_msg).m_Address);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:992: ", (out_msg).m_Address);
 ;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:990: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:993: ", (out_msg).m_Destination);
 ;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:991: ", (out_msg).m_DataBlk);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:994: ", (out_msg).m_DataBlk);
 ;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:992: ", (out_msg).m_NumPendingExtAcks);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:995: ", (out_msg).m_NumPendingExtAcks);
 ;
       (out_msg).m_MessageSize = MessageSizeType_Data;
       (out_msg).m_prefDWG = (((L2Cache_getL2CacheEntry(addr))).m_CacheState == L2Cache_State_L2_MIC);
@@ -635,13 +636,13 @@ void L2Cache_Controller::gg_dataFromL2CacheToGetXForwardIDPref(const Address& ad
       (((out_msg).m_Destination).add(((((*(m_chip_ptr->m_L2Cache_Pref_TBEs_vec[m_version]))).lookup(addr))).m_Forward_GetX_ID));
       (out_msg).m_DataBlk = ((L2Cache_getL2CacheEntry(addr))).m_DataBlk;
       (out_msg).m_NumPendingExtAcks = ((((*(m_chip_ptr->m_L2Cache_Pref_TBEs_vec[m_version]))).lookup(addr))).m_ForwardGetX_AckCount;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1009: ", (out_msg).m_Address);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1012: ", (out_msg).m_Address);
 ;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1010: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1013: ", (out_msg).m_Destination);
 ;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1011: ", (out_msg).m_DataBlk);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1014: ", (out_msg).m_DataBlk);
 ;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1012: ", (out_msg).m_NumPendingExtAcks);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1015: ", (out_msg).m_NumPendingExtAcks);
 ;
       (out_msg).m_MessageSize = MessageSizeType_Data;
       (out_msg).m_prefDWG = (((L2Cache_getL2CacheEntry(addr))).m_CacheState == L2Cache_State_L2_MIC);
@@ -666,13 +667,13 @@ void L2Cache_Controller::e_dataFromL2CacheToL2Requestor(const Address& addr)
       (out_msg).m_NumPendingExtAcks = ((*in_msg_ptr)).m_NumPendingExtAcks;
       (((out_msg).m_Destination).add(((*in_msg_ptr)).m_RequestorMachId));
       (out_msg).m_DataBlk = ((L2Cache_getL2CacheEntry(addr))).m_DataBlk;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1030: ", (out_msg).m_Address);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1033: ", (out_msg).m_Address);
 ;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1031: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1034: ", (out_msg).m_Destination);
 ;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1032: ", (out_msg).m_DataBlk);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1035: ", (out_msg).m_DataBlk);
 ;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1033: ", (out_msg).m_NumPendingExtAcks);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1036: ", (out_msg).m_NumPendingExtAcks);
 ;
       (out_msg).m_MessageSize = MessageSizeType_Data;
       (out_msg).m_prefDWG = ((((L2Cache_getL2CacheEntry(addr))).m_CacheState == L2Cache_State_L2_M) || (((L2Cache_getL2CacheEntry(addr))).m_CacheState == L2Cache_State_L2_MT));
@@ -695,7 +696,7 @@ void L2Cache_Controller::k_dataFromL2CacheToL1Requestor(const Address& addr)
       (out_msg).m_Type = CoherenceResponseType_DATA;
       (out_msg).m_SenderMachId = m_machineID;
       (((out_msg).m_Destination).add(((*in_msg_ptr)).m_RequestorMachId));
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1049: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1052: ", (out_msg).m_Destination);
 ;
       (out_msg).m_DataBlk = ((L2Cache_getL2CacheEntry(addr))).m_DataBlk;
       (out_msg).m_MessageSize = MessageSizeType_Data;
@@ -841,12 +842,12 @@ void L2Cache_Controller::p_addNumberOfPendingExtAcks(const Address& addr)
     const ResponseMsg* in_msg_ptr;
     in_msg_ptr = dynamic_cast<const ResponseMsg*>(((*(m_chip_ptr->m_L2Cache_responseToL2Cache_vec[m_version]))).peek());
     assert(in_msg_ptr != NULL);
-    DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1160: ", ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks);
+    DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1163: ", ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks);
 ;
     ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks = (((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks + ((*in_msg_ptr)).m_NumPendingExtAcks);
-    DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1162: ", ((*in_msg_ptr)).m_NumPendingExtAcks);
+    DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1165: ", ((*in_msg_ptr)).m_NumPendingExtAcks);
 ;
-    DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1163: ", ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks);
+    DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1166: ", ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks);
 ;
   }
 }
@@ -855,10 +856,10 @@ void L2Cache_Controller::p_addNumberOfPendingExtAcks(const Address& addr)
 void L2Cache_Controller::q_decrementNumberOfPendingExtAcks(const Address& addr)
 {
   DEBUG_MSG(GENERATED_COMP, HighPrio,"executing");
-  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1168: ", ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks);
+  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1171: ", ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks);
 ;
   ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks = (((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks - (1));
-  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1170: ", ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks);
+  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1173: ", ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks);
 ;
 }
 
@@ -866,10 +867,10 @@ void L2Cache_Controller::q_decrementNumberOfPendingExtAcks(const Address& addr)
 void L2Cache_Controller::r_decrementNumberOfPendingIntAcks(const Address& addr)
 {
   DEBUG_MSG(GENERATED_COMP, HighPrio,"executing");
-  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1174: ", ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks);
+  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1177: ", ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks);
 ;
   ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingIntAcks = (((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingIntAcks - (1));
-  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1176: ", ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks);
+  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1179: ", ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks);
 ;
 }
 
@@ -877,10 +878,10 @@ void L2Cache_Controller::r_decrementNumberOfPendingIntAcks(const Address& addr)
 void L2Cache_Controller::r_decrementNumberOfPendingIntAcksPrefTBE(const Address& addr)
 {
   DEBUG_MSG(GENERATED_COMP, HighPrio,"executing");
-  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1180: ", ((((*(m_chip_ptr->m_L2Cache_Pref_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks);
+  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1183: ", ((((*(m_chip_ptr->m_L2Cache_Pref_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks);
 ;
   ((((*(m_chip_ptr->m_L2Cache_Pref_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingIntAcks = (((((*(m_chip_ptr->m_L2Cache_Pref_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingIntAcks - (1));
-  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1182: ", ((((*(m_chip_ptr->m_L2Cache_Pref_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks);
+  DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1185: ", ((((*(m_chip_ptr->m_L2Cache_Pref_TBEs_vec[m_version]))).lookup(addr))).m_NumPendingExtAcks);
 ;
 }
 
@@ -898,7 +899,7 @@ void L2Cache_Controller::t_sendAckToInvalidator(const Address& addr)
       (out_msg).m_Type = CoherenceResponseType_ACK;
       (out_msg).m_SenderMachId = m_machineID;
       (((out_msg).m_Destination).add(((*in_msg_ptr)).m_RequestorMachId));
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1192: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1195: ", (out_msg).m_Destination);
 ;
       (out_msg).m_NumPendingExtAcks = (0);
       (out_msg).m_MessageSize = MessageSizeType_Control;
@@ -994,13 +995,13 @@ void L2Cache_Controller::y_dataFromTBEToRequestor(const Address& addr)
       (out_msg).m_NumPendingExtAcks = ((*in_msg_ptr)).m_NumPendingExtAcks;
       (((out_msg).m_Destination).add(((*in_msg_ptr)).m_RequestorMachId));
       (out_msg).m_DataBlk = ((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_DataBlk;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1254: ", (out_msg).m_Address);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1257: ", (out_msg).m_Address);
 ;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1255: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1258: ", (out_msg).m_Destination);
 ;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1256: ", (out_msg).m_DataBlk);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1259: ", (out_msg).m_DataBlk);
 ;
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1257: ", (out_msg).m_NumPendingExtAcks);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1260: ", (out_msg).m_NumPendingExtAcks);
 ;
       (out_msg).m_MessageSize = MessageSizeType_Data;
       ((*(m_chip_ptr->m_L2Cache_responseFromL2Cache_vec[m_version]))).enqueue(out_msg, L2_RESPONSE_LATENCY);
@@ -1019,7 +1020,7 @@ void L2Cache_Controller::zz_sendAckToQueuedInvalidator(const Address& addr)
       (out_msg).m_Type = CoherenceResponseType_ACK;
       (out_msg).m_SenderMachId = m_machineID;
       (((out_msg).m_Destination).add(((((*(m_chip_ptr->m_L2Cache_L2_TBEs_vec[m_version]))).lookup(addr))).m_InvalidatorID));
-      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1270: ", (out_msg).m_Destination);
+      DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-L2cache.sm:1273: ", (out_msg).m_Destination);
 ;
       (out_msg).m_NumPendingExtAcks = (0);
       (out_msg).m_MessageSize = MessageSizeType_Control;

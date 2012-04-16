@@ -1,0 +1,188 @@
+Terminals which are not used
+
+   MY_END
+
+
+Grammar
+
+    0 $accept: conffile $end
+
+    1 conffile: confmapping
+
+    2 confmapping: confmapping confpair
+    3            | /* empty */
+
+    4 confpair: STRING ':' attributes
+
+    5 attributes: INTEGER
+    6           | STRING
+    7           | LPAREN attrlist RPAREN
+
+    8 attrlist: attributes
+    9         | attributes ',' attrlist
+
+
+Terminals, with rules where they appear
+
+$end (0) 0
+',' (44) 9
+':' (58) 4
+error (256)
+STRING (258) 4 6
+INTEGER (259) 5
+MY_END (260)
+LPAREN (261) 7
+RPAREN (262) 7
+
+
+Nonterminals, with rules where they appear
+
+$accept (10)
+    on left: 0
+conffile (11)
+    on left: 1, on right: 0
+confmapping (12)
+    on left: 2 3, on right: 1 2
+confpair (13)
+    on left: 4, on right: 2
+attributes (14)
+    on left: 5 6 7, on right: 4 8 9
+attrlist (15)
+    on left: 8 9, on right: 7 9
+
+
+state 0
+
+    0 $accept: . conffile $end
+
+    $default  reduce using rule 3 (confmapping)
+
+    conffile     go to state 1
+    confmapping  go to state 2
+
+
+state 1
+
+    0 $accept: conffile . $end
+
+    $end  shift, and go to state 3
+
+
+state 2
+
+    1 conffile: confmapping .
+    2 confmapping: confmapping . confpair
+
+    STRING  shift, and go to state 4
+
+    $default  reduce using rule 1 (conffile)
+
+    confpair  go to state 5
+
+
+state 3
+
+    0 $accept: conffile $end .
+
+    $default  accept
+
+
+state 4
+
+    4 confpair: STRING . ':' attributes
+
+    ':'  shift, and go to state 6
+
+
+state 5
+
+    2 confmapping: confmapping confpair .
+
+    $default  reduce using rule 2 (confmapping)
+
+
+state 6
+
+    4 confpair: STRING ':' . attributes
+
+    STRING   shift, and go to state 7
+    INTEGER  shift, and go to state 8
+    LPAREN   shift, and go to state 9
+
+    attributes  go to state 10
+
+
+state 7
+
+    6 attributes: STRING .
+
+    $default  reduce using rule 6 (attributes)
+
+
+state 8
+
+    5 attributes: INTEGER .
+
+    $default  reduce using rule 5 (attributes)
+
+
+state 9
+
+    7 attributes: LPAREN . attrlist RPAREN
+
+    STRING   shift, and go to state 7
+    INTEGER  shift, and go to state 8
+    LPAREN   shift, and go to state 9
+
+    attributes  go to state 11
+    attrlist    go to state 12
+
+
+state 10
+
+    4 confpair: STRING ':' attributes .
+
+    $default  reduce using rule 4 (confpair)
+
+
+state 11
+
+    8 attrlist: attributes .
+    9         | attributes . ',' attrlist
+
+    ','  shift, and go to state 13
+
+    $default  reduce using rule 8 (attrlist)
+
+
+state 12
+
+    7 attributes: LPAREN attrlist . RPAREN
+
+    RPAREN  shift, and go to state 14
+
+
+state 13
+
+    9 attrlist: attributes ',' . attrlist
+
+    STRING   shift, and go to state 7
+    INTEGER  shift, and go to state 8
+    LPAREN   shift, and go to state 9
+
+    attributes  go to state 11
+    attrlist    go to state 15
+
+
+state 14
+
+    7 attributes: LPAREN attrlist RPAREN .
+
+    $default  reduce using rule 7 (attributes)
+
+
+state 15
+
+    9 attrlist: attributes ',' attrlist .
+
+    $default  reduce using rule 9 (attrlist)
