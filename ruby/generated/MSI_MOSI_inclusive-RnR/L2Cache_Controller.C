@@ -1823,7 +1823,7 @@ void L2Cache_Controller::fjj_insertionDataArray(const Address& addr)
     const RequestMsg* in_msg_ptr;
     in_msg_ptr = dynamic_cast<const RequestMsg*>(((*(m_chip_ptr->m_L2Cache_L1RequestToL2Cache_vec[m_version]))).peek());
     assert(in_msg_ptr != NULL);
-    ((((*(m_chip_ptr->m_L2Cache_L2cacheMemory_vec[m_version]))).lookup(addr))).m_posFIFO = (((*(m_chip_ptr->m_L2Cache_L2cacheMemory_vec[m_version]))).insertionFIFO(addr));
+    ((((*(m_chip_ptr->m_L2Cache_L2cacheMemory_vec[m_version]))).lookup(addr))).m_posFIFO = (((*(m_chip_ptr->m_L2Cache_L2cacheMemory_vec[m_version]))).insertionDataArray(addr));
   }
 }
 
@@ -1835,7 +1835,7 @@ void L2Cache_Controller::fjjb_insertionDataArrayFromRepl(const Address& addr)
     const RequestMsg* in_msg_ptr;
     in_msg_ptr = dynamic_cast<const RequestMsg*>(((*(m_chip_ptr->m_L2Cache_dataArrayReplQueue_vec[m_version]))).peek());
     assert(in_msg_ptr != NULL);
-    ((((*(m_chip_ptr->m_L2Cache_L2cacheMemory_vec[m_version]))).lookup(addr))).m_posFIFO = (((*(m_chip_ptr->m_L2Cache_L2cacheMemory_vec[m_version]))).insertionFIFO(addr));
+    ((((*(m_chip_ptr->m_L2Cache_L2cacheMemory_vec[m_version]))).lookup(addr))).m_posFIFO = (((*(m_chip_ptr->m_L2Cache_L2cacheMemory_vec[m_version]))).insertionDataArray(addr));
   }
 }
 
@@ -1849,7 +1849,7 @@ void L2Cache_Controller::fjj_removeDataArray(const Address& addr)
 ;
   DEBUG_SLICC(MedPrio, "../protocols/MSI_MOSI_inclusive-RnR-L2cache.sm:1902: ", (L2Cache_getState(addr)));
 ;
-  (((*(m_chip_ptr->m_L2Cache_L2cacheMemory_vec[m_version]))).evictFIFO(addr));
+  (((*(m_chip_ptr->m_L2Cache_L2cacheMemory_vec[m_version]))).evictDataArray(addr));
 }
 
 /** \brief Pop incoming data replacement request queue*/

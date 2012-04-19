@@ -288,6 +288,7 @@ static const char *global_default_param =
 "g_FUNCTIONAL_SHADOW: true\n"
 "g_TAM_SHADOW: 16\n"
 "\n"
+"g_DATA_FIFO: false\n"
 "g_BLOCKS_FIFO: 32768\n"
 "\n"
 "// TSO is deprecated\n"

@@ -313,8 +313,8 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     void setTimeLast(Address);
 	void addReused(Address);
 	void initialTouch(Address, NodeID);
-    void evictFIFO(Address);
-    int insertionFIFO(Address);
+    void evictDataArray(Address);
+    int insertionDataArray(Address);
   }
 
   external_type(TBETable) {
@@ -1886,13 +1886,13 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
 
   action(fjj_insertionDataArray, "\fjj_i", desc="") {
 		peek(L1RequestIntraChipL2Network_in, RequestMsg) {
-			L2cacheMemory[address].posFIFO := L2cacheMemory.insertionFIFO(address);
+			L2cacheMemory[address].posFIFO := L2cacheMemory.insertionDataArray(address);
 		}
   }
   
   action(fjjb_insertionDataArrayFromRepl, "\fjjb_i", desc="") {
 		peek(dataArrayReplQueueNetwork_in, RequestMsg) {
-			L2cacheMemory[address].posFIFO := L2cacheMemory.insertionFIFO(address);
+			L2cacheMemory[address].posFIFO := L2cacheMemory.insertionDataArray(address);
 		}
   }
   
@@ -1901,7 +1901,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
         DEBUG_EXPR(id);
         DEBUG_EXPR(getState(address));
 
-		L2cacheMemory.evictFIFO(address);
+		L2cacheMemory.evictDataArray(address);
   }
   
   action(fl_popDataReplQueue, "fl", desc="Pop incoming data replacement request queue") {
@@ -1922,7 +1922,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
                 L2_SIV, L2_PSIV, L2_SIC, 
                 L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
                 L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
-                L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV}, 
+                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV}, 
   {L2_Replacement, L2_PrefetchS_Replacement, L2_PrefetchX_Replacement,L1_PUTX, L1_PUTX_last, L1_PUTS, L1_PUTS_last, L1_PUTX_old, L1_PUTS_old, Data_replacement}) {
     z_stall;
   }
@@ -2347,8 +2347,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
     jjj_statsPrefetchLocalS2;
     ji_marcaRepl;
     fjj_removeDataArray;
-    rr_deallocateL2CacheBlock;
-   
+    rr_deallocateL2CacheBlock;   
   }
   transition(L2_S, L2_PrefetchS_Replacement, L2_I) {
     jjj_statsPrefetchLocal2; 

@@ -75,6 +75,8 @@
 #include "DataBlock.h"
 #include "MachineType.h"
 #include "RubySlicc_ComponentMapping.h"
+#include "RequestMsg.h"
+#include "MessageBuffer.h"
 
 #include "PseudoLRUPolicy.h"
 #include "PseudoLRUPolicy2.h"
@@ -160,7 +162,7 @@ class CacheMemory {
 public:
 
   // Constructors
-  CacheMemory(AbstractChip* chip_ptr, int numSetBits, int cacheAssoc, const MachineType machType, const string& description, int version);
+  CacheMemory(AbstractChip* chip_ptr, int numSetBits, int cacheAssoc, const MachineType machType, const string& description, int version, int versionB=0);
 // Constructors
   CacheMemory(AbstractChip* chip_ptr, int numSetBits, int cacheAssoc, const MachineType machType, const string& description);
 
@@ -202,8 +204,8 @@ public:
   ENTRY& lookup(const Address& address);
   const ENTRY& lookup(const Address& address) const;
 
-  int insertionFIFO(const Address& address);
-  void evictFIFO(const Address& address);
+  int insertionDataArray(const Address& address);
+  void evictDataArray(const Address& address);
 
   // Get/Set permission of cache block
   AccessPermission getPermission(const Address& address) const;
@@ -244,6 +246,8 @@ public:
    
    void initialTouch(const Address& address, const NodeID proc) ;
 
+   int m_version;
+
 private:
   // Private Methods
 
@@ -277,7 +281,6 @@ private:
   
   //JORGE
   int foundTagInSet(Index line, const Address& tag) const;
-  int m_version;
   uint64 *timeLoadArray;
   uint64 *timeLastArray;
   uint64 *timeReplArray;
@@ -306,8 +309,7 @@ private:
   
   CacheMemory* m_shadow;
   
-  CirBuf* dataArray;
-
+  void* dataArray;
 };
 
 // Output operator declaration
@@ -331,7 +333,7 @@ ostream& operator<<(ostream& out, const CacheMemory<ENTRY>& obj)
 template<class ENTRY>
 inline 
 CacheMemory<ENTRY>::CacheMemory(AbstractChip* chip_ptr, int numSetBits, 
-                                      int cacheAssoc, const MachineType machType, const string& description, int version)
+                                      int cacheAssoc, const MachineType machType, const string& description, int version, int versionB)
 
 {
    m_version = version;
@@ -476,8 +478,13 @@ CacheMemory<ENTRY>::CacheMemory(AbstractChip* chip_ptr, int numSetBits,
   for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) m_histoReuseThread[i] = new Histogram(1, 500);
 
   if(m_version != -1) {
-  	if (m_machType == MachineType_L2Cache) m_shadow = new CacheMemory(chip_ptr, numSetBits, g_TAM_SHADOW, MachineType_L2Cache, description, -1);  	
-	dataArray = new CirBuf(chip_ptr, g_BLOCKS_FIFO, version);
+  	if (m_machType == MachineType_L2Cache && g_SHADOW) m_shadow = new CacheMemory(chip_ptr, numSetBits, g_TAM_SHADOW, MachineType_L2Cache, description, -1);  	
+  	
+	if(g_DATA_FIFO) dataArray = new CirBuf(chip_ptr, g_BLOCKS_FIFO, version);
+	else {
+	  dataArray = new CacheMemory(chip_ptr, g_DATA_NUM_SETS_BITS, g_DATA_ASSOC, MachineType_L2Cache, description, -1, m_version);  	
+	  ((CacheMemory*)dataArray)->m_version = versionB;
+	}	
   } 
   else {
   	m_replacementPolicy_ptr = new LRUPolicyL2(m_cache_num_sets, m_cache_assoc, &m_cache);
@@ -880,24 +887,6 @@ void CacheMemory<ENTRY>::allocateL2(const Address& address)
   // Find the first open slot
   Index cacheSet = addressToCacheSet(address);
   
-    if( m_version!=-1) {
-	//	cerr << "allocate" << endl;
-	}
-
-  //JORGE
-/*  if(m_shadowSet->isTagPresent(address)) {
-  	uint64 auxMisses= m_nmisses[cacheSet] - m_shadowSet->lookup(address).m_nmisses;
-  	//cerr << "fallos: " << auxMisses<< endl;
-  	if (auxMisses < 1000) {  	
-		m_histoSets[cacheSet].add(auxMisses);
-		m_histoGlobal.add(auxMisses);
-		m_shadowSet->deallocate(address);  	
-	}
-  }
-  
-  m_nmisses[cacheSet]++;
-  m_nmissesGlobal++;
-  */
   
   for (int i=0; i < m_cache_assoc; i++) {
     if (m_cache[cacheSet][i].m_Permission == AccessPermission_NotPresent) {
@@ -919,10 +908,6 @@ void CacheMemory<ENTRY>::allocateL2(const Address& address)
       m_cache[cacheSet][i].m_timeLast = g_eventQueue_ptr->getTime();
       
 
-  if( m_version!=-1) {
-	//	cerr << "allocate fin" << endl;
-	}
-
       return;
     }
   }
@@ -931,26 +916,44 @@ void CacheMemory<ENTRY>::allocateL2(const Address& address)
 
 template<class ENTRY>
 inline 
-int CacheMemory<ENTRY>::insertionFIFO(const Address& address) 
+int CacheMemory<ENTRY>::insertionDataArray(const Address& address) 
 {
   assert(address == line_address(address));
-  assert(isTagPresent(address));
+  assert(!((CacheMemory*) dataArray)->isTagPresent(address));
   DEBUG_EXPR(CACHE_COMP, HighPrio, address);	
 	
-	return dataArray->insert(address);
+  if(g_DATA_FIFO)
+	return ((CirBuf*) dataArray)->insert(address);
+  else
+  {
+  	CacheMemory* cm = ((CacheMemory*) dataArray);
+    if( !cm->cacheAvail(address)) {
+	  Address a = cm->cacheProbe(address, 0);
+	  
+	  RequestMsg out_msg;      
+	  (out_msg).m_Address = a;
+	  (out_msg).m_Type = CoherenceRequestType_DATA_REPL;
+	  m_chip_ptr->m_L2Cache_dataArrayReplQueue_vec[map_Address_to_L2(address).num]->enqueue(out_msg); 
+	  
+	  cm->lookup(a).m_Permission = AccessPermission_NotPresent;
+    }
+  	cm->allocateL2(address);
+    return 0;
+  }
 
   ERROR_MSG("Allocate didn't find an available entry");
 }
 
 template<class ENTRY>
 inline 
-void CacheMemory<ENTRY>::evictFIFO(const Address& address) 
+void CacheMemory<ENTRY>::evictDataArray(const Address& address) 
 {
   assert(address == line_address(address));
-  assert(isTagPresent(address));
+  assert(((CacheMemory*) dataArray)->isTagPresent(address));
   DEBUG_EXPR(CACHE_COMP, HighPrio, address);
 
-	dataArray->remove(address);
+  if(g_DATA_FIFO) ((CirBuf*)dataArray)->remove(address);
+  else ((CacheMemory*) dataArray)->lookup(address).m_Permission = AccessPermission_NotPresent;;
 
   //ERROR_MSG("Allocate didn't find an available entry");
 }
@@ -973,8 +976,6 @@ void CacheMemory<ENTRY>::initialTouch(const Address& address, const NodeID proc)
 			}
 		}
       m_replacementPolicy_ptr->touch(cacheSet, i, aux, proc);
-
-
 }
 
 template<class ENTRY>
@@ -985,12 +986,6 @@ void CacheMemory<ENTRY>::deallocate(const Address& address)
   assert(isTagPresent(address));
   DEBUG_EXPR(CACHE_COMP, HighPrio, address);
   
-  if( m_version!=-1) {
-		//cerr << "deallocate" << endl;
-	}
-  //JORGE
- // m_cache[cacheSet][i].
-// cout << "hola" << endl;
 
 	if(m_machType == MACHINETYPE_L2CACHE_ENUM && m_version!=-1) {
 		//L2Cache_Entry a = (L2Cache_Entry) lookup(address);
@@ -1010,11 +1005,7 @@ void CacheMemory<ENTRY>::deallocate(const Address& address)
 		 m_shadow->allocateL2(address);
 	}
 
-  if( m_version!=-1) {
-		//cerr << "deallocate fin" << endl;
-	}
-
-}
+ }
 
 // Returns with the physical address of the conflicting cache line
 // *Only called when replacing a cache line [in the protocol .sm]

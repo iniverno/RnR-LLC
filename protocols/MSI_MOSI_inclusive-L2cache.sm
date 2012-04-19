@@ -753,10 +753,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   }
     
   action(d_issuePUTX, "d", desc="Issue PUTX") {
-    peek(L1RequestIntraChipL2Network_in, RequestMsg) {
-        L2cacheMemory[address].owner := in_msg.RequestorMachId;       
-        dram.i_request(address, 2, machineID, machineID);      
-    }
+        dram.i_request(address, 2, machineID, machineID);
    }
 
   // finalAck issued from the response queue

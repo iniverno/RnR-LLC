@@ -438,6 +438,16 @@ TransitionResult L2Cache_Controller::doTransitionWorker(L2Cache_Event event, L2C
   case HASH_FUN(L2Cache_State_L2_SSMV, L2Cache_Event_L1_PUTX_old):
   case HASH_FUN(L2Cache_State_L2_SSMV, L2Cache_Event_L1_PUTS_old):
   case HASH_FUN(L2Cache_State_L2_SSMV, L2Cache_Event_Data_replacement):
+  case HASH_FUN(L2Cache_State_L2_INRS, L2Cache_Event_L2_Replacement):
+  case HASH_FUN(L2Cache_State_L2_INRS, L2Cache_Event_L2_PrefetchS_Replacement):
+  case HASH_FUN(L2Cache_State_L2_INRS, L2Cache_Event_L2_PrefetchX_Replacement):
+  case HASH_FUN(L2Cache_State_L2_INRS, L2Cache_Event_L1_PUTX):
+  case HASH_FUN(L2Cache_State_L2_INRS, L2Cache_Event_L1_PUTX_last):
+  case HASH_FUN(L2Cache_State_L2_INRS, L2Cache_Event_L1_PUTS):
+  case HASH_FUN(L2Cache_State_L2_INRS, L2Cache_Event_L1_PUTS_last):
+  case HASH_FUN(L2Cache_State_L2_INRS, L2Cache_Event_L1_PUTX_old):
+  case HASH_FUN(L2Cache_State_L2_INRS, L2Cache_Event_L1_PUTS_old):
+  case HASH_FUN(L2Cache_State_L2_INRS, L2Cache_Event_Data_replacement):
   case HASH_FUN(L2Cache_State_L2_INRSI, L2Cache_Event_L2_Replacement):
   case HASH_FUN(L2Cache_State_L2_INRSI, L2Cache_Event_L2_PrefetchS_Replacement):
   case HASH_FUN(L2Cache_State_L2_INRSI, L2Cache_Event_L2_PrefetchX_Replacement):

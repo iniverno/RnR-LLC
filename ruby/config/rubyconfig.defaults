@@ -287,6 +287,7 @@ g_PROTEGE_RRIP: false
 g_FUNCTIONAL_SHADOW: true
 g_TAM_SHADOW: 16
 
+g_DATA_FIFO: false
 g_BLOCKS_FIFO: 32768
 
 // TSO is deprecated
