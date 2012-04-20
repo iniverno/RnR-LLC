@@ -919,7 +919,7 @@ inline
 int CacheMemory<ENTRY>::insertionDataArray(const Address& address) 
 {
   assert(address == line_address(address));
-  assert(!((CacheMemory*) dataArray)->isTagPresent(address));
+  if(!g_DATA_FIFO) assert(!((CacheMemory*) dataArray)->isTagPresent(address));
   DEBUG_EXPR(CACHE_COMP, HighPrio, address);	
 	
   if(g_DATA_FIFO)
@@ -949,7 +949,7 @@ inline
 void CacheMemory<ENTRY>::evictDataArray(const Address& address) 
 {
   assert(address == line_address(address));
-  assert(((CacheMemory*) dataArray)->isTagPresent(address));
+  if(!g_DATA_FIFO) assert(((CacheMemory*) dataArray)->isTagPresent(address));
   DEBUG_EXPR(CACHE_COMP, HighPrio, address);
 
   if(g_DATA_FIFO) ((CirBuf*)dataArray)->remove(address);
