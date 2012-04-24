@@ -1350,7 +1350,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
 
   action(rr_deallocateL2CacheBlock, "\r", desc="Deallocate L2 cache block.  Sets the cache to not present, allowing a replacement in parallel with a fetch.") {
     L2cacheMemory[address].PrevLocalCacheState:=L2cacheMemory[address].CacheState;
-    //L2cacheMemory.printTemp(address);
+    L2cacheMemory.printTemp(address);
     L2cacheMemory.deallocate(address);
   }
 
@@ -2899,7 +2899,7 @@ k_dataFromL2CacheToL1Requestor;
     kk_removeRequestSharer;
     m_writeDataFromRequestQueueToL2Cache;
     j_set_setMRU;
-    setTimeLast;
+    //setTimeLast;
     jjj_keepReuseL1;
     jj_popL1RequestQueue;
   }
