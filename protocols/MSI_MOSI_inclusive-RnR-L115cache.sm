@@ -959,6 +959,12 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
     k_popMandatoryQueue;
   }
 
+  transition(L1_S, L1_DownGrade) {
+    e_dataFromL1CacheToL2Cache;
+    l_popRequestQueue;
+  }
+
+
   transition(L1_S, Store, L1_IM) {
     i_allocateTBE;
     jjj_actualizaReuso;

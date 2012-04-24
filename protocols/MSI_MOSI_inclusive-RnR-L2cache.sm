@@ -165,6 +165,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     L2_INRSZ, desc="";
     L2_INRSI, desc="";
     L2_NRSIV, desc="";
+    L2_NRSS_IS, desc="L3 has the TAG but not the data, some L1s have the data and L3 has seen a new read request";
     
     L2_NRS, desc="";
     L2_NRSS, desc="";
@@ -1908,7 +1909,15 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     profileMsgDelay(2, dataArrayReplQueueNetwork_in.dequeue_getDelayCycles());
   }
 	   
-
+  action(jg_issueDownGradeSmallestL1copyRequest, "jg", desc="DownGrade to get data L1 copy") {
+    enqueue(L1RequestIntraChipL2Network_out, RequestMsg, latency="L2_REQUEST_LATENCY") {
+      out_msg.Address := address;
+      out_msg.Type := CoherenceRequestType:L1_DG;
+      out_msg.RequestorMachId := machineID;
+      out_msg.Destination := L2cacheMemory[address].Sharers.smallestElement();
+      out_msg.MessageSize := MessageSizeType:Control;
+    }
+  }
 
   //*****************************************************
   // TRANSITIONS
@@ -1922,7 +1931,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
                 L2_SIV, L2_PSIV, L2_SIC, 
                 L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
                 L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
-                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV}, 
+                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS}, 
   {L2_Replacement, L2_PrefetchS_Replacement, L2_PrefetchX_Replacement,L1_PUTX, L1_PUTX_last, L1_PUTS, L1_PUTS_last, L1_PUTX_old, L1_PUTS_old, Data_replacement}) {
     z_stall;
   }
@@ -3357,6 +3366,52 @@ transition(L2_NRSS, {L1_GETS, L1_GET_INSTR}, L2_SS) {
 	jj_popL1RequestQueue2;
 }
 
+
+transition(L2_NRSS, {L1_GETS, L1_GET_INSTR}, L2_NRSS_IS) {
+	uu_profileAccess;
+	i_allocateTBE;
+	//k_dataFromL2CacheToL1Requestor
+	jsr_setReused;
+	fjj_insertionDataArray;
+	ww_profileMissNoDir;
+	set_setMRU;
+	setTimeLast;
+	nn_addSharer;
+	ss_recordGetSL1ID;
+	jg_issueDownGradeSmallestL1copyRequest;
+    //a_issueGETS;
+	jj_popL1RequestQueue2;
+}
+
+transition(L2_NRSS_IS, Data_int_ack, L2_SS) {
+    jm_writeDataFromResponseQueueToL2Cache;
+    ee_dataFromL2CacheToGetSIDs;  // could be an internal or external requestor
+    s_deallocateTBE;
+    o_popIncomingResponseQueue;
+  }  
+
+  transition(L2_NRSS_IS, {Forwarded_GETS, Forwarded_GET_INSTR}) {  // can see forwards, not inv
+    dd_recordGetSForwardID;
+    l_popForwardedRequestQueue;
+  }
+  
+  transition(L2_NRSS_IS,Forwarded_PREFS) {  // can see forwards, not inv
+    dd_recordGetSForwardID;
+    l_popForwardedRequestQueue;
+  }
+  
+  transition(L2_NRSS_IS, {L1_GETS, L1_GET_INSTR}) {
+    jsr_setReused;
+    ww_profileMissNoDir;
+    set_setMRU;
+    setTimeLast;
+    nn_addSharer;
+    ss_recordGetSL1ID;
+    jj_popL1RequestQueue2;
+  }
+
+
+
 transition(L2_NRSS, L1_UPGRADE_no_others, L2_NRMT) {
 	uu_profileAccess;
     
@@ -3424,6 +3479,8 @@ transition(L2_NRSIV, Proc_last_int_ack, L2_I) {
 	s_deallocateTBE;
 	rr_deallocateL2CacheBlock;
 }
+
+
 
 transition(L2_NRSIV, {L1_GETS, L1_GET_INSTR, L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX}) {   // stall on all L1 requests
 	z_stall;
