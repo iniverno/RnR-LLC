@@ -92,6 +92,8 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
 
     L1_SI, desc="issued PUTS, waiting for response";
     L1_MI, desc="issued PUTX, waiting for response";
+    
+    L1_ISS, desc="L1 idle, issued GETS, have not seen response yet";
   }
 
   // EVENTS
@@ -902,7 +904,7 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
   //*****************************************************
 
   // Transitions for Load/Store/Replacement/WriteBack from transient states
-  transition({L1_IS, L1_IM, L1_ISI, L1_IMI, L1_IMS, L1_IMSI, L1_SI, L1_MI}, {Load, Ifetch, Store, L1_Replacement, L15_Replacement, L1_WriteBack}) {
+  transition({L1_IS, L1_ISS, L1_IM, L1_ISI, L1_IMI, L1_IMS, L1_IMSI, L1_SI, L1_MI}, {Load, Ifetch, Store, L1_Replacement, L15_Replacement, L1_WriteBack}) {
     z_stall;
   }
 
@@ -1064,6 +1066,19 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
   
   transition(L1_IS, L1_Data, L1_S) {
     //DB u_writeDataToL1Cache;
+    h_load_hit;
+    s_deallocateTBE;
+    o_popIncomingResponseQueue;
+  }
+
+  transition(L1_IS, L1_DownGrade, L1_ISS) {
+    //DB u_writeDataToL1Cache;
+    l_popRequestQueue;
+  }
+  
+  transition(L1_ISS, L1_Data, L1_S) {
+    //DB u_writeDataToL1Cache;
+    e_dataFromL1CacheToL2Cache;
     h_load_hit;
     s_deallocateTBE;
     o_popIncomingResponseQueue;

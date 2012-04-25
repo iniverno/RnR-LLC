@@ -1914,7 +1914,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
       out_msg.Address := address;
       out_msg.Type := CoherenceRequestType:L1_DG;
       out_msg.RequestorMachId := machineID;
-      out_msg.Destination := L2cacheMemory[address].Sharers.smallestElement();
+      out_msg.Destination.add(L2cacheMemory[address].Sharers.smallestElement(MachineType:L1Cache));
       out_msg.MessageSize := MessageSizeType:Control;
     }
   }
@@ -3350,35 +3350,21 @@ transition(L2_NRSS, L2_Replacement, L2_NRSIV) {
     tt_issueSharedInvalidateIntL1copiesRequest;
 }
   
-  
-transition(L2_NRSS, {L1_GETS, L1_GET_INSTR}, L2_SS) {
-	uu_profileAccess;
-	//i_allocateTBE;
-	k_dataFromL2CacheToL1Requestor
-	jsr_setReused;
-	fjj_insertionDataArray;
-	ww_profileMissNoDir;
-	set_setMRU;
-	setTimeLast;
-	nn_addSharer;
-	//ss_recordGetSL1ID;
-    //a_issueGETS;
-	jj_popL1RequestQueue2;
-}
 
 
 transition(L2_NRSS, {L1_GETS, L1_GET_INSTR}, L2_NRSS_IS) {
 	uu_profileAccess;
 	i_allocateTBE;
 	//k_dataFromL2CacheToL1Requestor
+	ddd_setPendingIntAcksToOne;
 	jsr_setReused;
 	fjj_insertionDataArray;
 	ww_profileMissNoDir;
 	set_setMRU;
 	setTimeLast;
+	jg_issueDownGradeSmallestL1copyRequest;  // Order with respect to nn_addSharer is important!!!!
 	nn_addSharer;
 	ss_recordGetSL1ID;
-	jg_issueDownGradeSmallestL1copyRequest;
     //a_issueGETS;
 	jj_popL1RequestQueue2;
 }
