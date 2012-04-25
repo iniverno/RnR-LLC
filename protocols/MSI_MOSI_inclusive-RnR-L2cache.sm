@@ -3396,6 +3396,9 @@ transition(L2_NRSS_IS, Data_int_ack, L2_SS) {
     jj_popL1RequestQueue2;
   }
 
+  transition(L2_NRSS_IS, {L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
+	z_stall;
+  }
 
 
 transition(L2_NRSS, L1_UPGRADE_no_others, L2_NRMT) {
