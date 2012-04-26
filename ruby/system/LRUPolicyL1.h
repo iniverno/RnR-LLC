@@ -16,7 +16,7 @@ class LRUPolicyL1 : public AbstractReplacementPolicy {
   void touch(Index set, Index way, Time time, uint proc);
   Index getVictim(Index set, uint proc) const;
   Vector<Vector<L1Cache_Entry> > *m_cache;
-    void replacementLower(Index set, Index way) const;
+  void replacementLower(Index set, Index way) const;
 
   
   void printStats(ostream& out) const ;
