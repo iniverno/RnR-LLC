@@ -1196,6 +1196,11 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
     s_deallocateTBE;
     o_popIncomingResponseQueue;
   }
+  
+  transition(L1_SI, L1_DownGrade) {
+    f_dataFromTBEToL2Cache;
+    l_popRequestQueue;
+  }
 
   // Transitions from L1_MI
   transition(L1_MI, L1_INV) {
