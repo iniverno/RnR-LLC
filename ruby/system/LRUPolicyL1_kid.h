@@ -40,7 +40,7 @@ LRUPolicyL1_kid::~LRUPolicyL1_kid()
 {
 }
 
-inline   void LRUPolicyL1::replacementLower(Index set, Index way) const {}
+inline   void LRUPolicyL1_kid::replacementLower(Index set, Index way) const {}
 
 inline 
 void LRUPolicyL1_kid::touch(Index set, Index index, Time time, uint proc){
