@@ -814,6 +814,7 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
     if (L1DcacheMemory.isTagPresent(address) == false) {
       L1DcacheMemory.allocate(address);
       L1DcacheMemory[address].reused:= false;
+      L1DcacheMemory[address].incl:= 0;
     }
     
   }
@@ -823,6 +824,7 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
     if (L1IcacheMemory.isTagPresent(address) == false) {
       L1IcacheMemory.allocate(address);
       L1IcacheMemory[address].reused:= false;
+      L1IcacheMemory[address].incl:= 0;
     }
   }
 
