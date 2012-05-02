@@ -46,6 +46,7 @@
 #include "Dram.h"
 
 #define DEBUG_DRAM 0
+#define DEBUG_WRITE 0
 
 
 
@@ -83,7 +84,9 @@ void Dram::insertMSHR(Address addr, int tipo, MachineID node)
     request.addr=addr;
     request.core=node;
     request.write= (tipo==2);
+    if(DEBUG_WRITE  &&  !g_CARGA_CACHE && tipo==2) cout << "WRITE! " << addr << endl;
     request.type=tipo;
+    request.MSHRTime = g_eventQueue_ptr->getTime();
     request.valid=true;
     request.bank= getBank(addr);
     if(tMSHR) request.demand=true;
@@ -250,9 +253,7 @@ return binstr;
      if(DEBUG_DRAM &&  !g_CARGA_CACHE ) cerr << "wakeup DRAM: " << g_eventQueue_ptr->getTime() <<" version:" << m_version<< " nm:" << RubyConfig::numberOfMemories() << endl;
     dramRequest req;
     req.valid=false;
-    
-    
-    
+        
     //nos llega una peticion por ciclo (de cpu) a cada controlador de memoria 
     if(m_version<RubyConfig::numberOfMemories())
     {
@@ -267,6 +268,17 @@ return binstr;
   		 cerr << "wakeup (requestor):" << req.requestor<< endl;
   		 cerr << "wakeup (valid):" << req.valid<< endl;
   	   }
+  	   if(DEBUG_WRITE  &&  !g_CARGA_CACHE && req.valid && req.write)
+  	   {
+         cerr << "wakeup (m_version):" << m_version	<< endl;
+         cerr << "wakeup (addr):" << req.addr	<< endl;
+  		 cerr << "wakeup (requestor):" << req.requestor<< endl;
+  		 cerr << "wakeup (valid):" << req.valid<< endl;
+  		 cerr << "wakeup (MSHRtime):" << req.MSHRTime<< endl;
+  		 cerr << "wakeup (Time in MSHR):" << g_eventQueue_ptr->getTime() - req.MSHRTime<< endl;
+  		 cerr << "wakeup [now]:" << g_eventQueue_ptr->getTime()<< endl;
+  	   }
+  	   
        if(req.valid) request(req);
     
      int i,j;
@@ -324,6 +336,8 @@ return binstr;
       bus.pop();
       
       if(DEBUG_DRAM  &&  !g_CARGA_CACHE) cout << "petici—n lista: " <<  request.addr << endl;
+      if(DEBUG_WRITE  &&  !g_CARGA_CACHE && request.write)  cout << "Ready write: " <<  request.addr << endl;
+      if(DEBUG_WRITE  &&  !g_CARGA_CACHE && request.write) cout << "a:" << g_eventQueue_ptr->getTime() - request.queueTime << " " << g_eventQueue_ptr->getTime() << " " << request.wakeUp << endl;
       
       //read request has to send the data to the LLC
       if(!request.write)
@@ -345,7 +359,7 @@ return binstr;
        
         if(DEBUG_DRAM  &&  !g_CARGA_CACHE) cout << "petici—n lista: " <<  request.addr << endl;
         
-        DEBUG_SLICC(MedPrio, "DramWakeup (sended message): ", out_msg);
+        DEBUG_SLICC(MedPrio, "DramWakeup (sent message): ", out_msg);
         
         //m_chip_ptr->m_Directory_dramToDirQueue_vec[0]->enqueue(out_msg, 1);
         if(request.demand)m_chip_ptr->m_L2Cache_responseToL2CacheQueue_vec[map_Address_to_L2Node(request.addr)]->enqueue(out_msg, 1); 
@@ -356,7 +370,6 @@ return binstr;
     
      if(g_VARIANTE==13) PattsMetrics();
     
-    //cout << "buc 3a barrier" << endl;
     
     //stats
    for(i=0; i< numOfBanks; i++)
@@ -374,9 +387,9 @@ return binstr;
    prefQueueBank1.add(banks[1].prefetchQueue.size());
    
    int barrierBank=lastBankUsed;
-    i=firstBank();    
-    j=i;
-    
+    //i=firstBank();    
+    //j=i;
+    j = -1;
    bool reqServed=false;
     int reqType=-1;    
     Time demTime=0, prefTime=0;  //para averiguar quiŽn lleg— antes al controlador
@@ -384,36 +397,72 @@ return binstr;
   
   bool alldemands=false;
   //cerr << "wakeup DRAM: " << g_eventQueue_ptr->getTime() << endl;
+  bool oldestTry = false;
   while(!reqServed && j!=barrierBank)
   { 
     	//cerr << "bucle achedule" << endl;
     reqType=-1;
-    while(j!=barrierBank && !alldemands)
-    {  
-      //cout << "buc 1a barrier" << barrierBank << " i: " << i << "  j: " << j << endl;
-      if(banks[j].demandQueue.size()>0) { reqType=1; i=j; j=(j==numOfBanks-1)?0:j+1; goto salida1; }
-      
-     //siguiente banco % #bancos  
-      j=(j==numOfBanks-1)?0:j+1;
-      if(j==barrierBank) alldemands=true;
-      //cout << "buc 1b barrier" << barrierBank << " i: " << i << "  j: " << j << endl;
-    }
     
-    if(j==barrierBank) j=(j==numOfBanks-1)?0:j+1;
-    
-    while(reqType==-1)
+    //This first part of the conditional tries to schedule the oldest queued request
+    if(!oldestTry) 
     {
-      //cout << "buc 2a barrier" << barrierBank << " i: " << i << "  j: " << j << endl;
-      //cout << "i: " << i << " j: " << j << "size: " << banks[j].prefetchQueue.size() << endl;
-      if(banks[j].prefetchQueue.size()>0) { reqType=0; i=j; j=(j==numOfBanks-1)?0:j+1; goto salida1; }
-      //siguiente banco % #bancos  
-      j=(j==numOfBanks-1)?0:j+1;
-      if(j==barrierBank) break;
-      //cout << "buc 2b barrier" << barrierBank << " i: " << i << "  j: " << j << endl;
+    	oldestTry = true;
+    	Time oldestTime = 0;
+    	int oldestIndex = -1;
+    	for(int auxIndex=0; auxIndex < numOfBanks; auxIndex++) 
+    	{
+    		if(banks[auxIndex].demandQueue.size()>0)
+    		{
+    			Time auxTime = banks[auxIndex].demandQueue.front().queueTime;
+    			if(auxTime < oldestTime || oldestTime==0)
+    			{
+    				oldestTime = auxTime;
+    				oldestIndex = auxIndex;
+    			}
+    		}
+		}
+		if(oldestIndex != -1)
+		{
+			reqType = 1;
+			i = oldestIndex;
+			j=(oldestIndex==numOfBanks-1)?0:oldestIndex+1;
+		} 
+		else 
+		{
+			i=firstBank();    
+    		j=i;
+    		continue;
+		}
+	}
+	else 
+	{
     
-    }
-    
-    if(reqType==-1 || j==barrierBank) { g_eventQueue_ptr->scheduleEvent(this, 1); return; }
+		while(reqType==-1 && j!=barrierBank && !alldemands )
+		{  
+		  //cout << "buc 1a barrier" << barrierBank << " i: " << i << "  j: " << j << endl;
+		  if(banks[j].demandQueue.size()>0) { reqType=1; i=j; j=(j==numOfBanks-1)?0:j+1; goto salida1; }
+		  
+		 //siguiente banco % #bancos  
+		  j=(j==numOfBanks-1)?0:j+1;
+		  if(j==barrierBank) alldemands=true;
+		  //cout << "buc 1b barrier" << barrierBank << " i: " << i << "  j: " << j << endl;
+		}
+		
+		if(j==barrierBank) j=(j==numOfBanks-1)?0:j+1;
+		
+		while(reqType==-1)
+		{
+		  //cout << "buc 2a barrier" << barrierBank << " i: " << i << "  j: " << j << endl;
+		  //cout << "i: " << i << " j: " << j << "size: " << banks[j].prefetchQueue.size() << endl;
+		  if(banks[j].prefetchQueue.size()>0) { reqType=0; i=j; j=(j==numOfBanks-1)?0:j+1; goto salida1; }
+		  //siguiente banco % #bancos  
+		  j=(j==numOfBanks-1)?0:j+1;
+		  if(j==barrierBank) break;
+		  //cout << "buc 2b barrier" << barrierBank << " i: " << i << "  j: " << j << endl;    
+		}
+		
+		if(reqType==-1 || j==barrierBank) { g_eventQueue_ptr->scheduleEvent(this, 1); return; }
+     }
      
      salida1:
    
@@ -454,7 +503,8 @@ return binstr;
           (reqType ? banks[i].demandQueue : banks[i].prefetchQueue).pop_front();
           
           //Atenci—n si cambiamos la temporizaci—n!!!!
-          request.wakeUp= g_eventQueue_ptr->getTime() + freqRatio* (hit ? 23 : 38);
+          if(!request.write) request.wakeUp= g_eventQueue_ptr->getTime() + freqRatio* (hit ? 19 : 34);
+          else request.wakeUp= g_eventQueue_ptr->getTime() + freqRatio* (hit ? 12 : 28);
           
            //metemos la petici—n en el bus
            //********************************************************
@@ -926,7 +976,7 @@ dramRequest Dram::getRequestFromMSHR(int v)
   for(i=0; i< nl2; i++)
   {
     aux=(l2+i)%nl2;
-    if(now!=L2thisCycle[aux] && ptrDram[aux]->isMSHRReady(1))
+    if(now!=L2thisCycle[aux] && ptrDram[aux]->isMSHRReady(1) && !(ptrDram[aux]->demandMSHR.empty()))
     {
       req=ptrDram[aux]->demandMSHR.front();
       if(req.channel==v)    //la peticion primera es para este canal
@@ -948,7 +998,7 @@ dramRequest Dram::getRequestFromMSHR(int v)
   for(i=0; i< nl2; i++)
   {
     aux=(l2+i)%nl2;
-    if(now!=L2thisCycle[aux] && ptrDram[aux]->isMSHRReady(0))
+    if(now!=L2thisCycle[aux] && ptrDram[aux]->isMSHRReady(0) && !(ptrDram[aux]->prefMSHR.empty()))
     {
       req=ptrDram[aux]->prefMSHR.front();
        if(req.channel==v) 

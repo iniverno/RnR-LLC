@@ -38,6 +38,7 @@ struct dramRequest
   Address addr;  
   MachineID requestor; //para insertar en la máquina adecuada
   Time wakeUp;  //para retirar de la cola del bus
+  Time MSHRTime; //time the request is in the MSHR
   Time queueTime;  //para estadisticas (momento en el que es encolada)
   bool demand;  //demanda o prebúsqueda
   MachineID core;  //core provocador
@@ -161,7 +162,7 @@ private:
   uint64 readHitBankBusyMask;  // 0111 1111 0000 0000  - 7^1 4^0 4^0
   uint64 readHitBusBusyMask; // 0111 1000 0000 0000 0000 0000 - 4^1 19^0
   
-  uint64 writeHitBankBusyMask;  // 
+  uint64 writeHitBankBusyMask;  //
   uint64 writeHitBusBusyMask; // 
   
   //static const uint64 hitBusBusyMask ; // 1000 0000 0000 0000 0000 - 4^1 19^0   //para ocupar el bus 1 ciclo

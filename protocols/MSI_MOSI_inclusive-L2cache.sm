@@ -753,8 +753,8 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   }
     
   action(d_issuePUTX, "d", desc="Issue PUTX") {
-    assert(1==1); 
-  }
+        dram.i_request(address, 2, machineID, machineID);
+   }
 
   // finalAck issued from the response queue
   action(c_finalAckToDirIfNeeded, "c", desc="Send FinalAck to dir if this is response to 3-hop xfer") {
@@ -1350,7 +1350,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
 
   action(rr_deallocateL2CacheBlock, "\r", desc="Deallocate L2 cache block.  Sets the cache to not present, allowing a replacement in parallel with a fetch.") {
     L2cacheMemory[address].PrevLocalCacheState:=L2cacheMemory[address].CacheState;
-    L2cacheMemory.printTemp(address);
+    //L2cacheMemory.printTemp(address);
     L2cacheMemory.deallocate(address);
   }
 
@@ -1732,6 +1732,20 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   //}
 
 
+  action(x_recycleRequest, "xreq", desc=""){
+    L1RequestIntraChipL2Network_in.recycle();
+  }
+  
+  action(xd_recycleDataRepl, "xd", desc=""){
+    dataArrayReplQueueNetwork_in.recycle();
+  }
+
+  
+  action(xr_recycleResponse, "xr", desc=""){
+    responseIntraChipL2Network_in.recycle();
+  }
+
+
    action(jjj_recordCoreID, "jrc", desc="Record coreID that made the prefetch") {
     peek(prefetch_in, RequestMsg) {
       Pref_TBEs[address].owner:= in_msg.coreID;
@@ -1853,12 +1867,28 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   // STALLS
 
   // Stalls L2 Replacement and L1 PUT for all transient states
+  //transition({L2_IS, L2_IPS,L2_IPX, L2_IPXZ ,L2_ISZ, L2_ISI, L2_IMV, L2_MV, L2_IM, L2_IMO, L2_IMI, L2_IMZ, L2_IMOI, L2_IMOZ, 
+  //              L2_SIV, L2_PSIV, L2_SIC, 
+  //              L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
+  //              L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV}, 
+  //{L2_Replacement, L2_PrefetchS_Replacement, L2_PrefetchX_Replacement,L1_PUTX, L1_PUTX_last, L1_PUTS, L1_PUTS_last, L1_PUTX_old, L1_PUTS_old, }) {
+  //  z_stall;
+  //}
+
   transition({L2_IS, L2_IPS,L2_IPX, L2_IPXZ ,L2_ISZ, L2_ISI, L2_IMV, L2_MV, L2_IM, L2_IMO, L2_IMI, L2_IMZ, L2_IMOI, L2_IMOZ, 
                 L2_SIV, L2_PSIV, L2_SIC, 
                 L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
                 L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV}, 
-  {L2_Replacement, L2_PrefetchS_Replacement, L2_PrefetchX_Replacement,L1_PUTX, L1_PUTX_last, L1_PUTS, L1_PUTS_last, L1_PUTX_old, L1_PUTS_old, }) {
-    z_stall;
+  {L1_PUTX, L1_PUTX_last, L1_PUTS, L1_PUTS_last, L1_PUTX_old, L1_PUTS_old }) {
+    x_recycleRequest;
+  }
+
+  transition({L2_IS, L2_IPS,L2_IPX, L2_IPXZ ,L2_ISZ, L2_ISI, L2_IMV, L2_MV, L2_IM, L2_IMO, L2_IMI, L2_IMZ, L2_IMOI, L2_IMOZ, 
+                L2_SIV, L2_PSIV, L2_SIC, 
+                L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
+                L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV}, 
+  {L2_Replacement, L2_PrefetchS_Replacement, L2_PrefetchX_Replacement }) {
+    x_recycleResponse;
   }
 
   //===============================================
@@ -2084,11 +2114,15 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     jj_popL1RequestQueue2;
   }
 
-  transition(L2_IS, L1_GETX, L2_ISZ) {  // don't go there, just go to stall state
-    z_stall;
+//  transition(L2_IS, L1_GETX, L2_ISZ) {  // don't go there, just go to stall state
+//    //z_stall;
+//    x_recycleRequest;
+//  }
+
+  transition(L2_IS, L1_GETX) {  // don't go there, just go to stall state
+    //z_stall;
+    x_recycleRequest;
   }
-
-
 
   // Transitions from L2_ISZ
   // could see L2_INVs or more L1 requests
@@ -2107,7 +2141,8 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   }
 
   transition(L2_ISZ, {L1_GETS, L1_GET_INSTR, L1_GETX}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
   // Transitions from L2_ISI, already sent the invalidate ack so can imediately go to I
@@ -2129,7 +2164,8 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   }
 
   transition(L2_ISI, {L1_GETS, L1_GET_INSTR, L1_GETX}) {  // stall all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   // Transitions from L2_IMV, waiting for int_acks
@@ -2147,7 +2183,8 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
 
   // stall all L1 request
   transition(L2_IMV, {L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }  
 
   transition(L2_IMV, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MV) {
@@ -2184,7 +2221,8 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
 
   // stall all L1 request
   transition(L2_MV, {L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }  
 
 
@@ -2233,8 +2271,9 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     l_popForwardedRequestQueue;
   }
 
-  transition(L2_IM, L1_GETX, L2_IMZ) {  // don't go there, just go to stall state
-    z_stall;
+  transition(L2_IM, L1_GETX) {  // don't go there, just go to stall state
+    //z_stall;
+    x_recycleRequest;
   }
   transition(L2_IM, Forwarded_PREFX, L2_IMZ) {  // don't go there, just go to stall state
     z_stall;
@@ -2293,8 +2332,9 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     jj_popL1RequestQueue2;
   }
 
-  transition(L2_IMO, L1_GETX, L2_IMOZ) {
-    z_stall;
+  transition(L2_IMO, L1_GETX) {
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -2336,7 +2376,8 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
 
 
   transition(L2_IMI, {L1_GETS, L1_GET_INSTR, L1_GETX}) {  // stall all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   
@@ -2366,7 +2407,8 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   }
 
   transition(L2_IMZ, {Forwarded_GETS, Forwarded_PREFS,Forwarded_PREFX, Forwarded_GET_INSTR, Forwarded_GETX, L1_GETS, L1_GET_INSTR, L1_GETX}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -2390,7 +2432,8 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   }
 
   transition(L2_IMOI, {L1_GETS, L1_GET_INSTR, L1_GETX}) {  // stall all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   transition(L2_IMOI, PrefetchS) { 
@@ -2422,7 +2465,8 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
 
  // stall on all requests
   transition(L2_IMOZ, {Forwarded_GETS,Forwarded_PREFS, Forwarded_PREFX, Forwarded_GET_INSTR, Forwarded_GETX, L1_GETS, L1_GET_INSTR, L1_GETX}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   // ===============================================
@@ -2517,7 +2561,8 @@ k_dataFromL2CacheToL1Requestor
   }
 
   transition(L2_SM, {Forwarded_GETS,Forwarded_GET_INSTR, Forwarded_PREFS, Forwarded_PREFX,L1_GETS, L1_GETX,L1_GET_INSTR, Forwarded_GETX}) {  // could see Forwards, if directory responses get out-of-order
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   transition(L2_SM, Data_ext_ack_not_0) {
@@ -2545,7 +2590,8 @@ transition(L2_SSM, L2_INV) {  // could see an invalidate for SS
 
   // stall all L1 request
   transition(L2_SSM, {L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }  
 
   transition(L2_SSM, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_SSMV) {
@@ -2595,7 +2641,8 @@ transition(L2_SSMV, Proc_int_ack) {
 
   // stall all L1 request
   transition(L2_SSMV, {L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }  
 
 
@@ -2732,7 +2779,8 @@ transition(L2_SS, L1_GETX, L2_MV) {
   }
 
   transition(L2_SIC, {L1_GETS, L1_GET_INSTR, L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX}) {   // stall on all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
 
@@ -2757,7 +2805,8 @@ transition(L2_SS, L1_GETX, L2_MV) {
   }
 
   transition(L2_SIV, {L1_GETS, L1_GET_INSTR, L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX}) {   // stall on all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   // Transitions from PSIV - initiated by a L2_PrefetchS_Replacement
@@ -2780,7 +2829,8 @@ transition(L2_SS, L1_GETX, L2_MV) {
   }
 
   transition(L2_PSIV, {L1_GETS, L1_GET_INSTR, L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX}) {   // stall on all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   
@@ -2899,7 +2949,7 @@ k_dataFromL2CacheToL1Requestor;
     kk_removeRequestSharer;
     m_writeDataFromRequestQueueToL2Cache;
     j_set_setMRU;
-    //setTimeLast;
+    setTimeLast;
     jjj_keepReuseL1;
     jj_popL1RequestQueue;
   }
@@ -2922,7 +2972,8 @@ k_dataFromL2CacheToL1Requestor;
 
 
   transition(L2_MIV, {L1_GETS, L1_GET_INSTR, L1_GETX}) {   // stall on all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -2941,8 +2992,9 @@ k_dataFromL2CacheToL1Requestor;
     o_popIncomingResponseQueue;
   }
   
-   transition(L2_PMIV, {L1_GETS, L1_GET_INSTR, L1_GETX}) {   // stall on all L1 requests
-    z_stall;
+  transition(L2_PMIV, {L1_GETS, L1_GET_INSTR, L1_GETX}) {   // stall on all L1 requests
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -2953,7 +3005,8 @@ k_dataFromL2CacheToL1Requestor;
   //}
 
   transition(L2_MIN, {L1_GETS, L1_GET_INSTR, L1_GETX}) {  // stall all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   
@@ -2963,7 +3016,8 @@ k_dataFromL2CacheToL1Requestor;
  // }
 
   transition(L2_PMIN, {L1_GETS, L1_GET_INSTR, L1_GETX}) {  // stall all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   
@@ -2980,11 +3034,13 @@ k_dataFromL2CacheToL1Requestor;
   }
   
   transition(L2_MIC, {L1_GETS, L1_GET_INSTR, L1_GETX}) {  // stall all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
    transition(L2_MIC, Forwarded_PREFX) {  // could see Forwards
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -3004,7 +3060,8 @@ k_dataFromL2CacheToL1Requestor;
 
   // stall all requests
   transition(L2_MIT, {Forwarded_GETS, Forwarded_PREFS,Forwarded_PREFX, Forwarded_GET_INSTR, Forwarded_GETX, L1_GETS, L1_GET_INSTR, L1_GETX}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -3039,8 +3096,10 @@ k_dataFromL2CacheToL1Requestor;
   }
 
  
-  transition(L2_MO, {L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}, L2_MOZ) {  // don't go there, just go to a stall state
-    z_stall;
+//  transition(L2_MO, {L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}, L2_MOZ) {  // don't go there, just go to a stall state
+  transition(L2_MO, {L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {  // don't go there, just go to a stall state
+    //z_stall;
+    x_recycleRequest;
   }
   
   
@@ -3060,7 +3119,8 @@ k_dataFromL2CacheToL1Requestor;
   }  
 
   transition(L2_MOIC, {L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -3082,7 +3142,8 @@ k_dataFromL2CacheToL1Requestor;
   }  
 
   transition(L2_MOICR, {L1_GETS, L1_GET_INSTR, L1_GETX}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   // L2_MOZ
@@ -3097,7 +3158,8 @@ k_dataFromL2CacheToL1Requestor;
   
   // stall everything
   transition(L2_MOZ, {Forwarded_GETS, Forwarded_PREFS, Forwarded_PREFX, Forwarded_GET_INSTR, Forwarded_GETX, L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   // ===============================================
@@ -3291,7 +3353,8 @@ transition(L2_OIV, Proc_int_ack) {
   }
 
   transition(L2_OIV, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX, L1_GETS, L1_GET_INSTR}) {  // stall L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   transition(L2_POIV, Proc_int_ack) {
@@ -3310,7 +3373,8 @@ transition(L2_OIV, Proc_int_ack) {
   }
 
   transition(L2_POIV, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX, L1_GETS, L1_GET_INSTR}) {  // stall L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   
@@ -3319,13 +3383,15 @@ transition(L2_OIV, Proc_int_ack) {
   
 
   transition(L2_OIN, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX, L1_GETS, L1_GET_INSTR}) {  // stall L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   
    
   transition(L2_POIN, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX, L1_GETS, L1_GET_INSTR}) {  // stall L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   
@@ -3348,7 +3414,8 @@ transition(L2_OIV, Proc_int_ack) {
   }
 
   transition(L2_OIC, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX, L1_GETS, L1_GET_INSTR}) {  // stall L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -3378,7 +3445,8 @@ transition(L2_OMV, Proc_last_int_ack, L2_MT) {
   }  
 
   transition(L2_OMV, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETS, L1_GET_INSTR, L1_GETX}) {  // must stall all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -3389,7 +3457,8 @@ transition(L2_OMV, Proc_last_int_ack, L2_MT) {
   // stall all L1 requests
 
   transition(L2_OM, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETS, L1_GET_INSTR, L1_GETX}) {  // must stall all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 
