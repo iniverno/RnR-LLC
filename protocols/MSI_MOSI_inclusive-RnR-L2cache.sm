@@ -1948,7 +1948,8 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
                 L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
                 L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS}, 
   {L2_Replacement, L2_PrefetchS_Replacement, L2_PrefetchX_Replacement}) {
-    xr_recycleResponse;
+    //xr_recycleResponse;
+    x_recycleRequest;
   }
 
   transition({L2_IS, L2_IPS,L2_IPX, L2_IPXZ ,L2_ISZ, L2_ISI, L2_IMV, L2_MV, L2_IM, L2_IMO, L2_IMI, L2_IMZ, L2_IMOI, L2_IMOZ, 
@@ -2064,7 +2065,8 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
     jj_popL1RequestQueue2;
   }
 
-  transition(L2_IS, L1_GETX, L2_ISZ) {  // don't go there, just go to stall state
+  //transition(L2_IS, L1_GETX, L2_ISZ) {  // don't go there, just go to stall state
+  transition(L2_IS, L1_GETX) {  // don't go there, just go to stall state
     //z_stall;
     x_recycleRequest;
   }
@@ -2197,7 +2199,8 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
     l_popForwardedRequestQueue;
   }
 
-  transition(L2_IM, L1_GETX, L2_IMZ) {  // don't go there, just go to stall state
+  //transition(L2_IM, L1_GETX, L2_IMZ) {  // don't go there, just go to stall state
+  transition(L2_IM, L1_GETX) {  // don't go there, just go to stall state
     //z_stall;
     x_recycleRequest;
   }
@@ -2258,7 +2261,8 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
     jj_popL1RequestQueue2;
   }
 
-  transition(L2_IMO, L1_GETX, L2_IMOZ) {
+  //transition(L2_IMO, L1_GETX, L2_IMOZ) {
+  transition(L2_IMO, L1_GETX) {
     //z_stall;
     x_recycleRequest;
   }
@@ -3035,7 +3039,8 @@ transition(L2_SS, L1_GETX, L2_MV) {
   }
 
  
-  transition(L2_MO, {L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}, L2_MOZ) {  // don't go there, just go to a stall state
+  //transition(L2_MO, {L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}, L2_MOZ) {  // don't go there, just go to a stall state
+  transition(L2_MO, {L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {  // don't go there, just go to a stall state
     //z_stall;
     x_recycleRequest;
   }
@@ -3609,7 +3614,8 @@ transition(L2_NRS, L1_GETX, L2_IM) {
     jjj_popResponeDramQueue;
   }
  
-  transition(L2_INRS, L1_GETX, L2_INRSZ) {  // don't go there, just go to stall state
+  //transition(L2_INRS, L1_GETX, L2_INRSZ) {  // don't go there, just go to stall state
+  transition(L2_INRS, L1_GETX) {  // don't go there, just go to stall state
     //z_stall;
     x_recycleRequest;
   }
@@ -3662,7 +3668,8 @@ transition(L2_INRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
     jj_popL1RequestQueue2;
   }
 
-transition(L2_INRM, L1_GETX, L2_INRMZ) {  // don't go there, just go to stall state
+//transition(L2_INRM, L1_GETX, L2_INRMZ) {  // don't go there, just go to stall state
+transition(L2_INRM, L1_GETX) {  // don't go there, just go to stall state
 	//z_stall;
 	x_recycleRequest;
 }
