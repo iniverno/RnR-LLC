@@ -1736,10 +1736,6 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     L1RequestIntraChipL2Network_in.recycle();
   }
   
-  action(xd_recycleDataRepl, "xd", desc=""){
-    dataArrayReplQueueNetwork_in.recycle();
-  }
-
   
   action(xr_recycleResponse, "xr", desc=""){
     responseIntraChipL2Network_in.recycle();
@@ -1888,7 +1884,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
                 L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
                 L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV}, 
   {L2_Replacement, L2_PrefetchS_Replacement, L2_PrefetchX_Replacement }) {
-    x_recycleResponse;
+    xr_recycleResponse;
   }
 
   //===============================================
