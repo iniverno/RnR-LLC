@@ -59,9 +59,9 @@ bool Dram::isAbleMSHR(int tipo)
 
 bool Dram::isPresentMSHR(Address addr, int tipo)
 {
-      for(it2=(tipo ? demandMSHR : prefMSHR).begin(); it2!=(tipo ? demandMSHR : prefMSHR).end(); it2++)
+      for(it2=((tipo<3) ? demandMSHR : prefMSHR).begin(); it2!=((tipo<3) ? demandMSHR : prefMSHR).end(); it2++)
     {
-      if((*it2).addr == addr ) return true;
+      if((*it2).addr == addr && (*it2).type == tipo) return true;
       
     }
     return false;
@@ -70,7 +70,7 @@ bool Dram::isPresentMSHR(Address addr, int tipo)
 void Dram::insertMSHR(Address addr, int tipo, MachineID node)
 {
   int tMSHR=(tipo == 3 ||tipo == 4)? 0:1;
-   assert(!isPresentMSHR(addr, tMSHR));
+   assert(!isPresentMSHR(addr, tipo));
    assert(isAbleMSHR(tMSHR));
    
    if(DEBUG_DRAM  &&  !g_CARGA_CACHE) cout << "petici—n insertada en el MSHR " <<  tipo << " " << addr << endl;
@@ -82,7 +82,7 @@ void Dram::insertMSHR(Address addr, int tipo, MachineID node)
     request.requestor=node;
     request.addr=addr;
     request.core=node;
-    request.write=0;
+    request.write= (tipo==2);
     request.type=tipo;
     request.valid=true;
     request.bank= getBank(addr);
@@ -128,13 +128,13 @@ bool Dram::isMSHRReady(int tipo)
     
     //MSHR
   
-    demandMSHRSizeCt=16;
-    prefMSHRSizeCt=16;
+    demandMSHRSizeCt=32;
+    prefMSHRSizeCt=32;
     lastL2BankServed=0;
     
     
     prefetchQueueSizeCt=8;
-    demandQueueSizeCt=16;
+    demandQueueSizeCt=32;
     //el patr—n de acierto est‡ definido como 4+4+7+4+4
     
     readHitBankBusyMask = 0x7F00;  // 0111 1111 0000 0000  - 7^1 4^0 4^0
@@ -323,6 +323,12 @@ return binstr;
       
       bus.pop();
       
+      if(DEBUG_DRAM  &&  !g_CARGA_CACHE) cout << "petici—n lista: " <<  request.addr << endl;
+      
+      //read request has to send the data to the LLC
+      if(!request.write)
+      {
+      
       //podemos mandar el dato a la L2!
       
         ResponseMsg out_msg;
@@ -345,6 +351,7 @@ return binstr;
         if(request.demand)m_chip_ptr->m_L2Cache_responseToL2CacheQueue_vec[map_Address_to_L2Node(request.addr)]->enqueue(out_msg, 1); 
         
         else m_chip_ptr->m_L2Cache_prefResponseToL2CacheQueue_vec[map_Address_to_L2Node(request.addr)]->enqueue(out_msg, 1); 
+      }
     }       
     
      if(g_VARIANTE==13) PattsMetrics();
@@ -422,23 +429,27 @@ return binstr;
      // if(DEBUG_DRAM  &&  !g_CARGA_CACHE)cout << "antes: \t\t" << binary(busBusyBitmap) << endl;
       
    
-       if(!(busBusyBitmap & (hit ? Dram::readHitBusBusyMask : readMissBusBusyMask))) //si el bus puede estar libre para la petici—n elegida
-        if(!(banks[i].bankBusyBitmap & (hit ? readHitBankBusyMask : readMissBankBusyMask))) //si el banco puede estar libre para la petici—n elegida
+       if(!(busBusyBitmap & (hit ? (request.write ? Dram::writeHitBusBusyMask : Dram::readHitBusBusyMask) \
+       		: (request.write ? Dram::writeMissBusBusyMask : Dram::readMissBusBusyMask)))) //si el bus puede estar libre para la petici—n elegida
+        if(!(banks[i].bankBusyBitmap & (hit ? (request.write ? Dram::writeHitBankBusyMask : Dram::readHitBankBusyMask) \
+        		: (request.write ? Dram::writeMissBankBusyMask : Dram::readMissBankBusyMask)))) //si el banco puede estar libre para la petici—n elegida
         {   
           //la petici—n puede ser servida
           //actualizamos tablas de ocupaci—n
-          busBusyBitmap |= (hit ? readHitBusBusyMask : readMissBusBusyMask);
+          if(request.write) busBusyBitmap |= (hit ? writeHitBusBusyMask : writeMissBusBusyMask);
+          else busBusyBitmap |= (hit ? readHitBusBusyMask : readMissBusBusyMask);
           
            //if(DEBUG_DRAM &&  !g_CARGA_CACHE)
            //cout << "despues: \t" << binary(busBusyBitmap) << "\t" << busBusyBitmap << endl;
           
-          banks[i].bankBusyBitmap |= (hit ? readHitBankBusyMask : readMissBankBusyMask);          
+          if(request.write) banks[i].bankBusyBitmap |= (hit ? writeHitBankBusyMask : writeMissBankBusyMask); 
+          else banks[i].bankBusyBitmap |= (hit ? readHitBankBusyMask : readMissBankBusyMask);          
           
           //actualizamos la p‡gina abierta en el banco
           if(!hit) banks[i].pageTAG= getPage(request.addr.getAddress());  
                   
          //PattsMetrics
-         coresQueued[i][L1CacheMachIDToProcessorNum(request.core)]--;
+         //coresQueued[i][L1CacheMachIDToProcessorNum(request.core)]--;
                    
           (reqType ? banks[i].demandQueue : banks[i].prefetchQueue).pop_front();
           
@@ -452,7 +463,7 @@ return binstr;
            bus.push(request); 
            
            //stats
-           cyclesBusBusyPerProc[L1CacheMachIDToProcessorNum(request.core)]+=g_CYCLES_BUS_DRAM;
+          if(!request.write) cyclesBusBusyPerProc[L1CacheMachIDToProcessorNum(request.core)]+=g_CYCLES_BUS_DRAM;
           
           //*********************************
           //stats
@@ -572,7 +583,6 @@ void Dram::i_request(Address addr, int tipo, MachineID node, MachineID core)
 void Dram::request(Address addr, int tipo, MachineID node, MachineID core)
 {
     
-    
     if(g_CARGA_CACHE)
     {
          ResponseMsg out_msg;
@@ -600,7 +610,6 @@ void Dram::request(Address addr, int tipo, MachineID node, MachineID core)
     request.requestor=node;
     request.addr=addr;
     request.core=core;
-    request.write=0;
     Time now=g_eventQueue_ptr->getTime()+1;
     
     request.queueTime=now-1;  //for stats
@@ -625,20 +634,20 @@ void Dram::request(Address addr, int tipo, MachineID node, MachineID core)
     switch(tipo)
     {
       case 1:
+        coresQueued[bank][L1CacheMachIDToProcessorNum(core)]++;
       case 2:  //demandas
         request.write=(tipo==2);
         
-        if (tipo==1)coresQueued[bank][L1CacheMachIDToProcessorNum(core)]++;
         request.demand=true;
         banks[bank].demandQueue.push_back(request);
         numDemandsQueued[bank]++;  //stats
         break;
         
       case 3:
+    	coresQueued[bank][L1CacheMachIDToProcessorNum(core)]++;
       case 4:  //prebusquedas
       //PattsMetrics
   
-    coresQueued[bank][L1CacheMachIDToProcessorNum(core)]++;
     
         request.demand=false;
         banks[bank].prefetchQueue.push_back(request);
@@ -707,10 +716,9 @@ void Dram::request(Address addr, int tipo, MachineID node, MachineID core)
     switch(request.type)
     {
       case 1:
+		coresQueued[bank][L1CacheMachIDToProcessorNum(request.core)]++;
       case 2:  //demandas
-        
-        if (request.type==1)coresQueued[bank][L1CacheMachIDToProcessorNum(request.core)]++;
-        
+                
         banks[bank].demandQueue.push_back(request);
         numDemandsQueued[bank]++;  //stats
         break;
@@ -836,8 +844,7 @@ void Dram::request(Address addr, int tipo, MachineID node, MachineID core)
    
     out << "prefQueueBank0: " << prefQueueBank0 << endl;
     
-     out << "prefQueueBank1: " << prefQueueBank1 << endl;
-    
+     out << "prefQueueBank1: " << prefQueueBank1 << endl;    
     
     out << "numRequestsQueued: " << numRequestsQueued << endl;
     out << "numDemandsQueued: " << numDemandsQueued << endl;
