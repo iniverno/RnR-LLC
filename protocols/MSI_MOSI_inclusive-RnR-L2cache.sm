@@ -1764,13 +1764,19 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
    }
   
   
-  //action(x_recycleRequest, "x", desc=""){
-    //peek(requestNetwork_in, RequestMsg) {
-      //enqueue(ownRequestQueue_out, RequestMsg, latency="RECYCLE_LATENCY"){
-        //out_msg := in_msg;
-//      }
-  //  }
-  //}
+  action(x_recycleRequest, "xreq", desc=""){
+    L1RequestIntraChipL2Network_in.recycle();
+  }
+  
+  action(xd_recycleDataRepl, "xd", desc=""){
+    dataArrayReplQueueNetwork_in.recycle();
+  }
+
+  
+  action(xr_recycleResponse, "xr", desc=""){
+    responseIntraChipL2Network_in.recycle();
+  }
+
 
 
    action(jjj_recordCoreID, "jrc", desc="Record coreID that made the prefetch") {
@@ -1927,14 +1933,45 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   // STALLS
 
   // Stalls L2 Replacement and L1 PUT for all transient states
+  //transition({L2_IS, L2_IPS,L2_IPX, L2_IPXZ ,L2_ISZ, L2_ISI, L2_IMV, L2_MV, L2_IM, L2_IMO, L2_IMI, L2_IMZ, L2_IMOI, L2_IMOZ, 
+  //              L2_SIV, L2_PSIV, L2_SIC, 
+  //              L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
+  //              L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
+  //              L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS}, 
+  //{L2_Replacement, L2_PrefetchS_Replacement, L2_PrefetchX_Replacement,L1_PUTX, L1_PUTX_last, L1_PUTS, L1_PUTS_last, L1_PUTX_old, L1_PUTS_old, Data_replacement}) {
+  //  z_stall;
+  //}
+
   transition({L2_IS, L2_IPS,L2_IPX, L2_IPXZ ,L2_ISZ, L2_ISI, L2_IMV, L2_MV, L2_IM, L2_IMO, L2_IMI, L2_IMZ, L2_IMOI, L2_IMOZ, 
                 L2_SIV, L2_PSIV, L2_SIC, 
                 L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
                 L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
                 L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS}, 
-  {L2_Replacement, L2_PrefetchS_Replacement, L2_PrefetchX_Replacement,L1_PUTX, L1_PUTX_last, L1_PUTS, L1_PUTS_last, L1_PUTX_old, L1_PUTS_old, Data_replacement}) {
-    z_stall;
+  {L2_Replacement, L2_PrefetchS_Replacement, L2_PrefetchX_Replacement}) {
+    xr_recycleResponse;
   }
+
+  transition({L2_IS, L2_IPS,L2_IPX, L2_IPXZ ,L2_ISZ, L2_ISI, L2_IMV, L2_MV, L2_IM, L2_IMO, L2_IMI, L2_IMZ, L2_IMOI, L2_IMOZ, 
+                L2_SIV, L2_PSIV, L2_SIC, 
+                L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
+                L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
+                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS}, 
+  {L1_PUTX, L1_PUTX_last, L1_PUTS, L1_PUTS_last, L1_PUTX_old, L1_PUTS_old}) {
+    x_recycleRequest;
+  }
+
+  transition({L2_IS, L2_IPS,L2_IPX, L2_IPXZ ,L2_ISZ, L2_ISI, L2_IMV, L2_MV, L2_IM, L2_IMO, L2_IMI, L2_IMZ, L2_IMOI, L2_IMOZ, 
+                L2_SIV, L2_PSIV, L2_SIC, 
+                L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
+                L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
+                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS}, 
+  {Data_replacement}) {
+    xd_recycleDataRepl;
+  }
+
+
+
+
 
   //===============================================
   // old L1_PUT requests
@@ -2028,7 +2065,8 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   }
 
   transition(L2_IS, L1_GETX, L2_ISZ) {  // don't go there, just go to stall state
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -2052,7 +2090,8 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   }
 
   transition(L2_ISI, {L1_GETS, L1_GET_INSTR, L1_GETX}) {  // stall all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   // Transitions from L2_IMV, waiting for int_acks
@@ -2070,7 +2109,8 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
 
   // stall all L1 request
   transition(L2_IMV, {L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }  
 
   transition(L2_IMV, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MV) {
@@ -2107,7 +2147,8 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
 
   // stall all L1 request
   transition(L2_MV, {L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }  
 
 
@@ -2157,7 +2198,8 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   }
 
   transition(L2_IM, L1_GETX, L2_IMZ) {  // don't go there, just go to stall state
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   transition(L2_IM, Forwarded_PREFX, L2_IMZ) {  // don't go there, just go to stall state
     z_stall;
@@ -2217,7 +2259,8 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   }
 
   transition(L2_IMO, L1_GETX, L2_IMOZ) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -2259,7 +2302,8 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
 
 
   transition(L2_IMI, {L1_GETS, L1_GET_INSTR, L1_GETX}) {  // stall all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   
@@ -2289,7 +2333,8 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   }
 
   transition(L2_IMZ, {Forwarded_GETS, Forwarded_PREFS,Forwarded_PREFX, Forwarded_GET_INSTR, Forwarded_GETX, L1_GETS, L1_GET_INSTR, L1_GETX}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -2313,7 +2358,8 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   }
 
   transition(L2_IMOI, {L1_GETS, L1_GET_INSTR, L1_GETX}) {  // stall all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   transition(L2_IMOI, PrefetchS) { 
@@ -2345,7 +2391,8 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
 
  // stall on all requests
   transition(L2_IMOZ, {Forwarded_GETS,Forwarded_PREFS, Forwarded_PREFX, Forwarded_GET_INSTR, Forwarded_GETX, L1_GETS, L1_GET_INSTR, L1_GETX}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   // ===============================================
@@ -2444,7 +2491,8 @@ k_dataFromL2CacheToL1Requestor
   }
 
   transition(L2_SM, {Forwarded_GETS,Forwarded_GET_INSTR, Forwarded_PREFS, Forwarded_PREFX,L1_GETS, L1_GETX,L1_GET_INSTR, Forwarded_GETX}) {  // could see Forwards, if directory responses get out-of-order
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   transition(L2_SM, Data_ext_ack_not_0) {
@@ -2472,7 +2520,8 @@ transition(L2_SSM, L2_INV) {  // could see an invalidate for SS
 
   // stall all L1 request
   transition(L2_SSM, {L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
-    z_stall;
+   // z_stall;
+   x_recycleRequest;
   }  
 
   transition(L2_SSM, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_SSMV) {
@@ -2522,7 +2571,8 @@ transition(L2_SSMV, Proc_int_ack) {
 
   // stall all L1 request
   transition(L2_SSMV, {L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }  
 
 //======================================================
@@ -2664,7 +2714,8 @@ transition(L2_SS, L1_GETX, L2_MV) {
   }
 
   transition(L2_SIC, {L1_GETS, L1_GET_INSTR, L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX}) {   // stall on all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
 
@@ -2689,7 +2740,8 @@ transition(L2_SS, L1_GETX, L2_MV) {
   }
 
   transition(L2_SIV, {L1_GETS, L1_GET_INSTR, L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX}) {   // stall on all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   // Transitions from PSIV - initiated by a L2_PrefetchS_Replacement
@@ -2712,7 +2764,8 @@ transition(L2_SS, L1_GETX, L2_MV) {
   }
 
   transition(L2_PSIV, {L1_GETS, L1_GET_INSTR, L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX}) {   // stall on all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   
@@ -2859,7 +2912,8 @@ transition(L2_SS, L1_GETX, L2_MV) {
 
 
   transition(L2_MIV, {L1_GETS, L1_GET_INSTR, L1_GETX}) {   // stall on all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -2879,7 +2933,8 @@ transition(L2_SS, L1_GETX, L2_MV) {
   }
   
    transition(L2_PMIV, {L1_GETS, L1_GET_INSTR, L1_GETX}) {   // stall on all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -2890,7 +2945,8 @@ transition(L2_SS, L1_GETX, L2_MV) {
   //}
 
   transition(L2_MIN, {L1_GETS, L1_GET_INSTR, L1_GETX}) {  // stall all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   
@@ -2900,7 +2956,8 @@ transition(L2_SS, L1_GETX, L2_MV) {
  // }
 
   transition(L2_PMIN, {L1_GETS, L1_GET_INSTR, L1_GETX}) {  // stall all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   
@@ -2917,7 +2974,8 @@ transition(L2_SS, L1_GETX, L2_MV) {
   }
   
   transition(L2_MIC, {L1_GETS, L1_GET_INSTR, L1_GETX}) {  // stall all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
    transition(L2_MIC, Forwarded_PREFX) {  // could see Forwards
@@ -2941,7 +2999,8 @@ transition(L2_SS, L1_GETX, L2_MV) {
 
   // stall all requests
   transition(L2_MIT, {Forwarded_GETS, Forwarded_PREFS,Forwarded_PREFX, Forwarded_GET_INSTR, Forwarded_GETX, L1_GETS, L1_GET_INSTR, L1_GETX}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -2977,7 +3036,8 @@ transition(L2_SS, L1_GETX, L2_MV) {
 
  
   transition(L2_MO, {L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}, L2_MOZ) {  // don't go there, just go to a stall state
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   
@@ -2997,7 +3057,8 @@ transition(L2_SS, L1_GETX, L2_MV) {
   }  
 
   transition(L2_MOIC, {L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -3019,7 +3080,8 @@ transition(L2_SS, L1_GETX, L2_MV) {
   }  
 
   transition(L2_MOICR, {L1_GETS, L1_GET_INSTR, L1_GETX}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   // L2_MOZ
@@ -3034,7 +3096,8 @@ transition(L2_SS, L1_GETX, L2_MV) {
   
   // stall everything
   transition(L2_MOZ, {Forwarded_GETS, Forwarded_PREFS, Forwarded_PREFX, Forwarded_GET_INSTR, Forwarded_GETX, L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
-    z_stall;
+   // z_stall;
+   x_recycleRequest;
   }
   
   // ===============================================
@@ -3241,7 +3304,8 @@ transition(L2_OIV, Proc_int_ack) {
   }
 
   transition(L2_OIV, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX, L1_GETS, L1_GET_INSTR}) {  // stall L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   transition(L2_POIV, Proc_int_ack) {
@@ -3260,7 +3324,8 @@ transition(L2_OIV, Proc_int_ack) {
   }
 
   transition(L2_POIV, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX, L1_GETS, L1_GET_INSTR}) {  // stall L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
   // transitions from L2_OIN
@@ -3268,11 +3333,13 @@ transition(L2_OIV, Proc_int_ack) {
   
 
   transition(L2_OIN, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX, L1_GETS, L1_GET_INSTR}) {  // stall L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
    
   transition(L2_POIN, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX, L1_GETS, L1_GET_INSTR}) {  // stall L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }  
   
   // transitions from L2_OIC
@@ -3294,7 +3361,8 @@ transition(L2_OIV, Proc_int_ack) {
   }
 
   transition(L2_OIC, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX, L1_GETS, L1_GET_INSTR}) {  // stall L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
   // Transitions from L2_OMV, 
@@ -3323,7 +3391,8 @@ transition(L2_OMV, Proc_last_int_ack, L2_MT) {
   }  
 
   transition(L2_OMV, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETS, L1_GET_INSTR, L1_GETX}) {  // must stall all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -3334,7 +3403,8 @@ transition(L2_OMV, Proc_last_int_ack, L2_MT) {
   // stall all L1 requests
 
   transition(L2_OM, {L1_UPGRADE, L1_UPGRADE_no_others, L1_GETS, L1_GET_INSTR, L1_GETX}) {  // must stall all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 
@@ -3397,7 +3467,8 @@ transition(L2_NRSS_IS, Data_int_ack, L2_SS) {
   }
 
   transition(L2_NRSS_IS, {L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
-	z_stall;
+	//z_stall;
+	x_recycleRequest;
   }
 
 
@@ -3472,7 +3543,8 @@ transition(L2_NRSIV, Proc_last_int_ack, L2_I) {
 
 
 transition(L2_NRSIV, {L1_GETS, L1_GET_INSTR, L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX}) {   // stall on all L1 requests
-	z_stall;
+	//z_stall;
+	x_recycleRequest;
 }
     
 // ===============================================
@@ -3538,7 +3610,8 @@ transition(L2_NRS, L1_GETX, L2_IM) {
   }
  
   transition(L2_INRS, L1_GETX, L2_INRSZ) {  // don't go there, just go to stall state
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
 
 transition(L2_INRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
@@ -3571,7 +3644,8 @@ transition(L2_INRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
   }
 
   transition(L2_INRSZ, {L1_GETS, L1_GET_INSTR, L1_GETX}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
   }
   
 
@@ -3589,7 +3663,8 @@ transition(L2_INRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
   }
 
 transition(L2_INRM, L1_GETX, L2_INRMZ) {  // don't go there, just go to stall state
-	z_stall;
+	//z_stall;
+	x_recycleRequest;
 }
   
 transition(L2_INRM, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_NRMT) {
@@ -3625,6 +3700,11 @@ transition(L2_INRMZ, Data_ext_ack_not_0) {
     mm_rememberIfFinalAckNeeded;
     jjj_popResponeDramQueue;
 }
+
+transition(L2_INRMZ, {L1_GETS, L1_GET_INSTR, L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX}) {
+	x_recycleRequest
+}
+
 
 //======================================================
   // BASE STATE - NRMT
@@ -3706,7 +3786,8 @@ transition(L2_NRMIT, Data_int_ack, L2_NRMT) {
 
   // stall all requests
 transition(L2_NRMIT, {Forwarded_GETS, Forwarded_PREFS,Forwarded_PREFX, Forwarded_GET_INSTR, Forwarded_GETX, L1_GETS, L1_GET_INSTR, L1_GETX}) {
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
 }
 
 transition(L2_NRMIV, Data_int_ack, L2_I) {
@@ -3724,7 +3805,8 @@ transition(L2_NRMIV, Data_int_ack, L2_I) {
 
 
 transition(L2_NRMIV, {L1_GETS, L1_GET_INSTR, L1_GETX}) {   // stall on all L1 requests
-    z_stall;
+    //z_stall;
+    x_recycleRequest;
 }
 
 

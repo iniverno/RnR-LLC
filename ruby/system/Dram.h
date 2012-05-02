@@ -38,6 +38,7 @@ struct dramRequest
   Address addr;  
   MachineID requestor; //para insertar en la máquina adecuada
   Time wakeUp;  //para retirar de la cola del bus
+  Time MSHRTime; //time the request is in the MSHR
   Time queueTime;  //para estadisticas (momento en el que es encolada)
   bool demand;  //demanda o prebúsqueda
   MachineID core;  //core provocador
