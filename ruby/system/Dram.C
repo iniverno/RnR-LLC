@@ -59,9 +59,9 @@ bool Dram::isAbleMSHR(int tipo)
 
 bool Dram::isPresentMSHR(Address addr, int tipo)
 {
-      for(it2=(tipo ? demandMSHR : prefMSHR).begin(); it2!=(tipo ? demandMSHR : prefMSHR).end(); it2++)
+      for(it2=((tipo<3) ? demandMSHR : prefMSHR).begin(); it2!=((tipo<3) ? demandMSHR : prefMSHR).end(); it2++)
     {
-      if((*it2).addr == addr ) return true;
+      if((*it2).addr == addr && (*it2).type == tipo) return true;
       
     }
     return false;
@@ -70,7 +70,7 @@ bool Dram::isPresentMSHR(Address addr, int tipo)
 void Dram::insertMSHR(Address addr, int tipo, MachineID node)
 {
   int tMSHR=(tipo == 3 ||tipo == 4)? 0:1;
-   assert(!isPresentMSHR(addr, tMSHR));
+   assert(!isPresentMSHR(addr, tipo));
    assert(isAbleMSHR(tMSHR));
    
    if(DEBUG_DRAM  &&  !g_CARGA_CACHE) cout << "petici—n insertada en el MSHR " <<  tipo << " " << addr << endl;
@@ -128,13 +128,13 @@ bool Dram::isMSHRReady(int tipo)
     
     //MSHR
   
-    demandMSHRSizeCt=16;
-    prefMSHRSizeCt=16;
+    demandMSHRSizeCt=32;
+    prefMSHRSizeCt=32;
     lastL2BankServed=0;
     
     
     prefetchQueueSizeCt=8;
-    demandQueueSizeCt=16;
+    demandQueueSizeCt=32;
     //el patr—n de acierto est‡ definido como 4+4+7+4+4
     
     readHitBankBusyMask = 0x7F00;  // 0111 1111 0000 0000  - 7^1 4^0 4^0
@@ -718,8 +718,7 @@ void Dram::request(Address addr, int tipo, MachineID node, MachineID core)
       case 1:
 		coresQueued[bank][L1CacheMachIDToProcessorNum(request.core)]++;
       case 2:  //demandas
-        
-        
+                
         banks[bank].demandQueue.push_back(request);
         numDemandsQueued[bank]++;  //stats
         break;
