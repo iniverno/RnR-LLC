@@ -2188,8 +2188,8 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   transition(L2_IM, {L1_GETS,L1_GET_INSTR}, L2_IMO) {
     ww_profileMissNoDir;
     set_setMRU;
-     nn_addSharer;
-   setTimeLast;
+    nn_addSharer;
+    setTimeLast;
     ss_recordGetSL1ID;
     jj_popL1RequestQueue2;
   }
@@ -2697,6 +2697,12 @@ transition(L2_SS, L1_GETX, L2_MV) {
     fl_popDataReplQueue;
   }
 
+//  transition(L2_SS, Data_replacement) {
+//  	fjjb_insertionDataArrayFromRepl;
+//    fl_popDataReplQueue;
+//  }
+
+
   // Transitions from SIC - Initiated by an invalidate
   transition(L2_SIC, Proc_int_ack) {
     aa_removeResponseSharer;
@@ -2893,9 +2899,15 @@ transition(L2_SS, L1_GETX, L2_MV) {
     jj_popL1RequestQueue;
   }
 
+
   transition(L2_MT, Data_replacement, L2_NRMT) {
     fl_popDataReplQueue;
   }
+  
+//  transition(L2_MT, Data_replacement) {
+//  	fjjb_insertionDataArrayFromRepl;
+//    fl_popDataReplQueue;
+//  }
 
 
   // Transitions from L2_MIV, waiting for local L1 response
@@ -3285,8 +3297,13 @@ k_dataFromL2CacheToL1Requestor
     jj_popL1RequestQueue;
   }	
   
-  transition(L2_SO, Data_replacement) {
-  	fjjb_insertionDataArrayFromRepl;
+//  transition(L2_SO, Data_replacement) {
+//  	fjjb_insertionDataArrayFromRepl;
+//    fl_popDataReplQueue;
+//  }
+  
+transition(L2_SO, Data_replacement, L2_NRSS) {
+	d_issuePUTX;
     fl_popDataReplQueue;
   }
   
@@ -3725,8 +3742,6 @@ transition(L2_NRMT, L2_Replacement, L2_NRMIV) {
 	v_issueInvalidateIntL1copyRequest;
 }
 
-
-  
 transition(L2_NRMT, {L1_GETS, L1_GET_INSTR}, L2_MO) {
     uu_profileAccess;
     jsr_setReused;
