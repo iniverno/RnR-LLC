@@ -958,6 +958,7 @@ void CacheMemory<ENTRY>::deallocate(const Address& address)
 		//L2Cache_Entry a = (L2Cache_Entry) lookup(address);
 		m_histoReuseThread[(lookup(address)).m_owner.num]->add((lookup(address)).m_uses);  
 		m_histoReuse->add(( lookup(address)).m_uses);
+		printTemp(address);
 	}
 	
   lookup(address).m_Last_Address= address;
@@ -1185,7 +1186,7 @@ void CacheMemory<ENTRY>::printTempCommand()
 		cerr << tLoadCore[j][i] << "\t" << tLastCore[j][i]  << "\t" ;
 	  }
     
-    cerr << tLoad[i] << "\t" << tLast[i]  << "\t" << (float)tLoad[i] / (float)tLast[i] << endl;
+    cerr << tLoad[i] << "\t" << tLast[i]  << "\t" << (float)tLoad[i] / (float)tLast[i] << "\t" << (float)tLoad[i] / (float)(tLast[i] + tLoad[i]) << endl;
   }
   
   cerr << "Reuse patterns per core:" ;
@@ -1260,7 +1261,7 @@ void CacheMemory<ENTRY>::printTemp(const Address& address)
     timeReplArrayCore[core][idx] ++;
    }
      
-    int reusoL1 = m_cache[cacheSet][loc].m_reuseL1;
+/*    int reusoL1 = m_cache[cacheSet][loc].m_reuseL1;
     if( (reusoL1==1 || reusoL1==3 ) && g_NO_REUSE_LRU) {
     	m_replacementPolicy_ptr->touch(cacheSet, loc, -1, 0);
     }
@@ -1295,6 +1296,7 @@ void CacheMemory<ENTRY>::printTemp(const Address& address)
   			}
   		}  		 
  	}
+*/
 	//cerr << "meto el bloque " << address << " con " << m_nmisses[cacheSet] << " fallos " << m_shadowSet->lookup(address).m_nmisses << endl;
 	
   }  //m_version && CARGA_CACHE		
