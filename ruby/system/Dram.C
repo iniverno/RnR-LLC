@@ -360,6 +360,7 @@ return binstr;
         if(DEBUG_DRAM  &&  !g_CARGA_CACHE) cout << "petici—n lista: " <<  request.addr << endl;
         
         DEBUG_SLICC(MedPrio, "DramWakeup (sent message): ", out_msg);
+        DEBUG_SLICC(MedPrio, "DramWakeup (L2 destination): ", map_Address_to_L2Node(request.addr));
         
         //m_chip_ptr->m_Directory_dramToDirQueue_vec[0]->enqueue(out_msg, 1);
         if(request.demand)m_chip_ptr->m_L2Cache_responseToL2CacheQueue_vec[map_Address_to_L2Node(request.addr)]->enqueue(out_msg, 1); 
