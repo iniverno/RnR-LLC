@@ -969,12 +969,15 @@ void CacheMemory<ENTRY>::initialTouch(const Address& address, const NodeID proc)
 	  int i=findTagInSet(cacheSet, address);
 	  
 	     Time aux=0;
-		if((m_machType==MachineType_L2Cache) && g_SHADOW && m_version != -1) {
-			if(m_shadow->isTagPresent( address)) {
-				m_shadow->deallocate(address);
-				aux=1;
-				//cerr << "HIT!" << endl;
-				m_cache[cacheSet][i].m_NRU = true;
+		if((m_machType==MachineType_L2Cache) {
+			m_cache[cacheSet][i].m_uses = 1;
+			if(g_SHADOW && m_version != -1) {
+				if(m_shadow->isTagPresent( address)) {
+					m_shadow->deallocate(address);
+					aux=1;
+					//cerr << "HIT!" << endl;
+					m_cache[cacheSet][i].m_NRU = true;
+				}
 			}
 		}
       m_replacementPolicy_ptr->touch(cacheSet, i, aux, proc);
