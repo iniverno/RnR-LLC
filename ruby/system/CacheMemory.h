@@ -297,6 +297,8 @@ private:
   
   CacheMemory* m_shadow;
 
+	//Number of lines with a number of hits, the position in the vector indicates the number of hits
+	Vector<uint64> m_LperNHits;  
 };
 
 // Output operator declaration
@@ -441,6 +443,9 @@ CacheMemory<ENTRY>::CacheMemory(AbstractChip* chip_ptr, int numSetBits,
       timeLastArray[i]=0;
       timeReplArray[i]=0;
     }
+    
+    m_LperNHits.setSize(200);
+    for(uint i =0; i< 200; i++) m_LperNHits[i] = 0;
   }
   
   m_histoSets.setSize(m_cache_num_sets);
@@ -817,6 +822,7 @@ bool CacheMemory<ENTRY>::cacheAvail(const Address& address) const
       return true;
     }
   }
+  //cerr << "Set #" << cacheSet << " is not big enough"<< endl;
   return false;
 }
 
@@ -926,12 +932,15 @@ void CacheMemory<ENTRY>::initialTouch(const Address& address, const NodeID proc)
 	  int i=findTagInSet(cacheSet, address);
 	  
 	     Time aux=0;
-		if((m_machType==MachineType_L2Cache) && g_SHADOW && m_version != -1) {
-			if(m_shadow->isTagPresent( address)) {
-				m_shadow->deallocate(address);
-				aux=1;
-				//cerr << "HIT!" << endl;
-				m_cache[cacheSet][i].m_NRU = true;
+		if(m_machType==MachineType_L2Cache) {
+			m_cache[cacheSet][i].m_uses = 1;
+			if(g_SHADOW && m_version != -1) {
+				if(m_shadow->isTagPresent( address)) {
+					m_shadow->deallocate(address);
+					aux=1;
+					//cerr << "HIT!" << endl;
+					m_cache[cacheSet][i].m_NRU = true;
+				}
 			}
 		}
       m_replacementPolicy_ptr->touch(cacheSet, i, aux, proc);
@@ -963,6 +972,11 @@ void CacheMemory<ENTRY>::deallocate(const Address& address)
 	
   lookup(address).m_Last_Address= address;
   bool NRU = lookup(address).m_NRU;
+  if( m_version == 0) {
+  	int aux = m_LperNHits[lookup(address).m_uses - 1];
+  	if(aux >= 200) m_LperNHits[199]++;
+    else m_LperNHits[aux - 1]++;
+  }
   lookup(address).m_Permission = AccessPermission_NotPresent;
 
 	if((m_machType==MachineType_L2Cache) && g_SHADOW && m_version != -1 && NRU) {
@@ -973,9 +987,7 @@ void CacheMemory<ENTRY>::deallocate(const Address& address)
 		 m_shadow->allocateL2(address);
 	}
 
-  if( m_version!=-1) {
-		//cerr << "deallocate fin" << endl;
-	}
+
 
 }
 
@@ -1184,7 +1196,7 @@ template<class ENTRY>
 inline 
 void CacheMemory<ENTRY>::printReuseCommand()
 { 
-  cerr << "Reuse patterns per core:" ;
+/*  cerr << "Reuse patterns per core:" ;
   for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++)
   {
   	cerr << endl << "core " << i<< ": " ;
@@ -1194,8 +1206,6 @@ void CacheMemory<ENTRY>::printReuseCommand()
   
   cerr << endl << m_histoGlobal << endl;
   cerr << "The number of not referenced blocks after 1K misses is: " << m_nLastGlobal << endl;
-  /*for(uint i=0; i<m_cache_num_sets; i++)
-  	cerr << m_histoSets[i] << endl;*/
   	
   m_replacementPolicy_ptr->printStats(cerr);	
   
@@ -1203,8 +1213,23 @@ void CacheMemory<ENTRY>::printReuseCommand()
   	cerr  << "_reuse_thread_" << i << ":\t" <<  *m_histoReuseThread[i] << endl;
   	
   cerr  << "_reuse_total_" << ":\t" <<  *m_histoReuse << endl;
-  
-  
+*/  
+
+/*	for (int i = 0; i < m_cache_num_sets; i++) 
+	{
+		for (int j = 0; j < m_cache_assoc; j++) 
+		{
+        	if(m_cache[i][j].m_uses > 0) 
+        		cerr << "uses\t" << i << "\t" << j << "\t" << m_cache[i][j].m_uses << endl;
+    	}
+    }
+*/
+	if(m_version == 0)
+	{
+		cerr << "LinesPerNumberOfHits:";
+		for (int j = 0; j < 200; j++) cerr << "Hits:" << j << "\t" << m_LperNHits[j] << endl;
+		cerr << endl;
+	}
 }
 
 template<class ENTRY>
