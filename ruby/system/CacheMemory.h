@@ -84,7 +84,7 @@
 #include "LRUPolicyL1.h"
 //#include "LRUPolicyL1_kid.h"
 #include "LRUPolicyL2.h"
-// #include "LRUPolicyL2_kid.h"
+#include "LRUPolicyL2_kid.h"
 // #include "LRUPolicyL2_kidR.h"
 // #include "LRUPolicyL2_qbs.h"
 // #include "LRUPolicyL2_use.h"
@@ -357,6 +357,8 @@ CacheMemory<ENTRY>::CacheMemory(AbstractChip* chip_ptr, int numSetBits,
 		m_replacementPolicy_ptr = new PseudoLRUPolicy2(m_cache_num_sets, m_cache_assoc);
 	  else if(strcmp(g_REPLACEMENT_POLICY_L2, "LRU") == 0)
 		m_replacementPolicy_ptr = new LRUPolicyL2(m_cache_num_sets, m_cache_assoc, &m_cache);
+	  else if(strcmp(g_REPLACEMENT_POLICY_L2, "LRU_kid") == 0)
+		m_replacementPolicy_ptr = new LRUPolicyL2_kid(m_cache_num_sets, m_cache_assoc, &m_cache);
 	  else if(strcmp(g_REPLACEMENT_POLICY_L2, "NRU") == 0)
 		m_replacementPolicy_ptr = new NRUPolicyL2(m_cache_num_sets, m_cache_assoc, &m_cache);
 	  else if(strcmp(g_REPLACEMENT_POLICY_L2, "LRRc") == 0)

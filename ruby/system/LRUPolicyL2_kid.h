@@ -15,10 +15,10 @@ class LRUPolicyL2_kid : public AbstractReplacementPolicy {
   LRUPolicyL2_kid(Index num_sets, Index assoc, Vector<Vector<L2Cache_Entry> > *a);
   ~LRUPolicyL2_kid();
 
-  void touch(Index set, Index way, Time time);
-  Index getVictim(Index set) const;
+  void touch(Index set, Index way, Time time, uint proc);
+  Index getVictim(Index set, uint proc) const;
   Vector<Vector<L2Cache_Entry> > *m_cache;
-
+  void replacementLower(Index set, Index way) const;
   void printStats(ostream& out) const;
 
 };
@@ -44,7 +44,7 @@ LRUPolicyL2_kid::~LRUPolicyL2_kid()
 }
 
 inline 
-void LRUPolicyL2_kid::touch(Index set, Index index, Time time){
+void LRUPolicyL2_kid::touch(Index set, Index index, Time time, uint proc){
   assert(index >= 0 && index < m_assoc);
   assert(set >= 0 && set < m_num_sets);
 
@@ -52,7 +52,7 @@ void LRUPolicyL2_kid::touch(Index set, Index index, Time time){
 }
 
 inline
-Index LRUPolicyL2_kid::getVictim(Index set) const {
+Index LRUPolicyL2_kid::getVictim(Index set, uint proc) const {
   //  assert(m_assoc != 0);
   Time time, smallest_time;
   Index smallest_index;
@@ -97,6 +97,8 @@ Index LRUPolicyL2_kid::getVictim(Index set) const {
 
   return smallest_index;
 }
+
+inline   void LRUPolicyL2_kid::replacementLower(Index set, Index way) const{}
 
 inline
 void LRUPolicyL2_kid::printStats(ostream& out) const
