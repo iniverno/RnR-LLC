@@ -1924,6 +1924,10 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
       out_msg.MessageSize := MessageSizeType:Control;
     }
   }
+  
+  action(pt_printTemp, "pt", desc="control of block life") {
+  	L2cacheMemory.printTemp(address);
+  }
 
   //*****************************************************
   // TRANSITIONS
@@ -2473,6 +2477,7 @@ k_dataFromL2CacheToL1Requestor
   
   
   transition(L2_S, Data_replacement, L2_NRS) {
+  	pt_printTemp;
     fl_popDataReplQueue;
   }
 
@@ -2694,6 +2699,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
   }
 
   transition(L2_SS, Data_replacement, L2_NRSS) {
+  	pt_printTemp;
     fl_popDataReplQueue;
   }
 
@@ -2839,6 +2845,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
 
   transition(L2_M, Data_replacement, L2_NRS) {
   	d_issuePUTX;
+  	pt_printTemp;
     fl_popDataReplQueue;
   }
 
@@ -2901,6 +2908,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
 
 
   transition(L2_MT, Data_replacement, L2_NRMT) {
+    pt_printTemp;
     fl_popDataReplQueue;
   }
   
@@ -3174,6 +3182,7 @@ k_dataFromL2CacheToL1Requestor
 
   transition(L2_O, Data_replacement, L2_NRS) {
   	d_issuePUTX;
+  	pt_printTemp;
     fl_popDataReplQueue;
   }
 
@@ -3304,6 +3313,7 @@ k_dataFromL2CacheToL1Requestor
   
 transition(L2_SO, Data_replacement, L2_NRSS) {
 	d_issuePUTX;
+	pt_printTemp;
     fl_popDataReplQueue;
   }
   

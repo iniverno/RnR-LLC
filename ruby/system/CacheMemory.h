@@ -924,6 +924,8 @@ int CacheMemory<ENTRY>::insertionDataArray(const Address& address)
   if(!g_DATA_FIFO) assert(!((CacheMemory*) dataArray)->isTagPresent(address));
   DEBUG_EXPR(CACHE_COMP, HighPrio, address);	
 	
+  lookup(address).m_timeLoad = g_eventQueue_ptr->getTime();
+  
   if(g_DATA_FIFO)
 	return ((CirBuf*) dataArray)->insert(address);
   else
@@ -969,7 +971,7 @@ void CacheMemory<ENTRY>::initialTouch(const Address& address, const NodeID proc)
 	  int i=findTagInSet(cacheSet, address);
 	  
 	     Time aux=0;
-		if((m_machType==MachineType_L2Cache) {
+		if(m_machType==MachineType_L2Cache) {
 			m_cache[cacheSet][i].m_uses = 1;
 			if(g_SHADOW && m_version != -1) {
 				if(m_shadow->isTagPresent( address)) {
@@ -996,7 +998,7 @@ void CacheMemory<ENTRY>::deallocate(const Address& address)
 		//L2Cache_Entry a = (L2Cache_Entry) lookup(address);
 		m_histoReuseThread[(lookup(address)).m_owner.num]->add((lookup(address)).m_uses);  
 		m_histoReuse->add(( lookup(address)).m_uses);
-		printTemp(address);
+		//printTemp(address);  // In RnR cache is called from the protocol when it is receiving DataRepl!
 	}
 	
   lookup(address).m_Last_Address= address;
@@ -1179,89 +1181,6 @@ void CacheMemory<ENTRY>::printData(ostream& out) const
 
 template<class ENTRY>
 inline 
-void CacheMemory<ENTRY>::printTempCommand()
-{ 
-  assert(m_version==0);
-  
-  uint64 *tLoad=new uint64[50000];
-  uint64 *tLast=new uint64[50000];    
-     
-   uint64**  tLoadCore= new uint64*[RubyConfig::numberOfL1CachePerChip(0)];
-   uint64**   tLastCore= new uint64*[RubyConfig::numberOfL1CachePerChip(0)];
-
-    for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++)
-    {
-    	tLoadCore[i]= new uint64[50000];
-		tLastCore[i]= new uint64[50000];
-    }
- 
-  cerr << "PRINT_TEMP" << endl;
- // for(int i=0; i<10000; i++) cerr << timeLoadArray[i] << "\t" << timeLastArray[i]  << "\t" <<timeReplArray[i] << endl;
-  
-  tLoad[0]= timeLoadArray[0] - timeLastArray[0];
-  tLast[0]= timeLastArray[0] - timeReplArray[0];
-  
-  for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++)
-  {
-  	tLoadCore[i][0]= timeLoadArrayCore[i][0] - timeLastArrayCore[i][0];
-  	tLastCore[i][0]= timeLastArrayCore[i][0] - timeReplArrayCore[i][0];
-  }
-  
-  for(int i=1; i<50000; i++)
-  {
-    tLoad[i]= timeLoadArray[i] + tLoad[i-1] - timeLastArray[i];
-    tLast[i]= timeLastArray[i] + tLast[i-1] - timeReplArray[i];
-    
-	  for(int j =0; j< RubyConfig::numberOfL1CachePerChip(0); j++)
-	  {
-		tLoadCore[j][i]= timeLoadArrayCore[j][i] + tLoadCore[j][i-1] - timeLastArrayCore[j][i];
-		tLastCore[j][i]= timeLastArrayCore[j][i] + tLastCore[j][i-1] - timeReplArrayCore[j][i];
-		
-		cerr << tLoadCore[j][i] << "\t" << tLastCore[j][i]  << "\t" ;
-	  }
-    
-    cerr << tLoad[i] << "\t" << tLast[i]  << "\t" << (float)tLoad[i] / (float)tLast[i] << "\t" << (float)tLoad[i] / (float)(tLast[i] + tLoad[i]) << endl;
-  }
-  
-/*  cerr << "Reuse patterns per core:" ;
-  for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++)
-  {
-  	cerr << endl << "core " << i<< ": " ;
-  	for(int j=0; j<9; j++) cerr << reuseArrayCore[i][j] << "\t";
-  }
-*/
-}
-
-
-template<class ENTRY>
-inline 
-void CacheMemory<ENTRY>::printReuseCommand()
-{ 
-  cerr << "Reuse patterns per core:" ;
-  for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++)
-  {
-  	cerr << endl << "core " << i<< ": " ;
-  	for(int j=0; j<9; j++) cerr << reuseArrayCore[i][j] << "\t";
-  }
-  
-  
-  cerr << endl << m_histoGlobal << endl;
-  cerr << "The number of not referenced blocks after 1K misses is: " << m_nLastGlobal << endl;
-  /*for(uint i=0; i<m_cache_num_sets; i++)
-  	cerr << m_histoSets[i] << endl;*/
-  	
-  m_replacementPolicy_ptr->printStats(cerr);	
-  
-  for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++) 
-  	cerr  << "_reuse_thread_" << i << ":\t" <<  *m_histoReuseThread[i] << endl;
-  	
-  cerr  << "_reuse_total_" << ":\t" <<  *m_histoReuse << endl;
-  
-  
-}
-
-template<class ENTRY>
-inline 
 void CacheMemory<ENTRY>::printTemp(const Address& address)
 { 
   
@@ -1279,21 +1198,14 @@ void CacheMemory<ENTRY>::printTemp(const Address& address)
    
    if(g_LIFETRACE)
    {
-    uint idx= (m_cache[cacheSet][loc].m_timeLoad - m_bigbang) / 10000;
-    assert(idx<50000);   
-    timeLoadArray[idx] ++;
-    timeLoadArrayCore[core][idx] ++;
+		uint idx= (m_cache[cacheSet][loc].m_timeLoad - m_bigbang) / 100000 ;
     
+    	for(uint aux = m_cache[cacheSet][loc].m_timeLoad; aux < m_cache[cacheSet][loc].m_timeLast; aux += 100000, idx++) 
+    	{
+    		timeLoadArray[idx] ++;
+    		timeLoadArrayCore[core][idx] ++;
+    	}
     
-    idx= (m_cache[cacheSet][loc].m_timeLast - m_bigbang) / 10000;
-    assert(idx<50000);
-    timeLastArray[idx] ++;
-    timeLastArrayCore[core][idx] ++;
-    
-    idx= (g_eventQueue_ptr->getTime() - m_bigbang) / 10000;
-    assert(idx<50000);
-    timeReplArray[idx] ++;
-    timeReplArrayCore[core][idx] ++;
    }
      
 /*    int reusoL1 = m_cache[cacheSet][loc].m_reuseL1;
@@ -1339,6 +1251,70 @@ void CacheMemory<ENTRY>::printTemp(const Address& address)
 //  cerr << m_cache[cacheSet][loc].m_timeLoad << "\t" << m_cache[cacheSet][loc].m_timeLast 
 //  << "\t" << m_cache[cacheSet][loc].m_timeRepl << endl;
 
+}
+
+
+template<class ENTRY>
+inline 
+void CacheMemory<ENTRY>::printReuseCommand()
+{ 
+  cerr << "Reuse patterns per core:" ;
+  for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++)
+  {
+  	cerr << endl << "core " << i<< ": " ;
+  	for(int j=0; j<9; j++) cerr << reuseArrayCore[i][j] << "\t";
+  }
+  
+  
+  cerr << endl << m_histoGlobal << endl;
+  cerr << "The number of not referenced blocks after 1K misses is: " << m_nLastGlobal << endl;
+  /*for(uint i=0; i<m_cache_num_sets; i++)
+  	cerr << m_histoSets[i] << endl;*/
+  	
+  m_replacementPolicy_ptr->printStats(cerr);	
+  
+  for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++) 
+  	cerr  << "_reuse_thread_" << i << ":\t" <<  *m_histoReuseThread[i] << endl;
+  	
+  cerr  << "_reuse_total_" << ":\t" <<  *m_histoReuse << endl;
+  
+  
+}
+
+template<class ENTRY>
+inline 
+void CacheMemory<ENTRY>::printTempCommand()
+{ 
+  assert(m_version==0);
+  
+
+	uint n_bloques = 0;
+	for (int i = 0; i < m_cache_num_sets; i++) 
+	{
+		for (int j = 0; j < m_cache_assoc; j++) 
+		{
+        	if(m_cache[i][j].m_Permission != AccessPermission_NotPresent) printTemp(m_cache[i][j].m_Address);
+        
+        	n_bloques++;
+    	}
+    }
+    
+ 
+  cerr << "PRINT_TEMP" << endl;
+ // for(int i=0; i<10000; i++) cerr << timeLoadArray[i] << "\t" << timeLastArray[i]  << "\t" <<timeReplArray[i] << endl;
+  
+  
+  for(int i=1; i<50000; i++)
+  {    
+    cerr << timeLoadArray[i] << "\t" << (float)timeLoadArray[i] / (float)(n_bloques) << endl;
+  }
+  
+  cerr << "Reuse patterns per core:" ;
+  for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++)
+  {
+  	cerr << endl << "core " << i<< ": " ;
+  	for(int j=0; j<9; j++) cerr << reuseArrayCore[i][j] << "\t";
+  }
 }
 
 
