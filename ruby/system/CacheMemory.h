@@ -1182,7 +1182,8 @@ void CacheMemory<ENTRY>::printTempCommand()
   
   for(int i=1; i<50000; i++)
   {    
-    cerr << timeLoadArray[i] << "\t" << (float)timeLoadArray[i] / (float)(timeLoadArray[i] + n_bloques) << endl;
+    cerr << timeLoadArray[i] << "\t" << (float)timeLoadArray[i] / (float)(n_bloques) << endl;
+    if (timeLoadArray[i] == 0) break;
   }
   
   cerr << "Reuse patterns per core:" ;
