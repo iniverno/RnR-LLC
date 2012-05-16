@@ -155,7 +155,7 @@ struct shadowEntry {
 };
 
 class AbstractChip;
-
+class CirBuf;
 
 template<class ENTRY>
 class CacheMemory {
@@ -785,12 +785,12 @@ bool CacheMemory<ENTRY>::isTagPresent(const Address& address) const
 
   if (location == -1) {
     // We didn't find the tag
-    DEBUG_EXPR(CACHE_COMP, LowPrio, address);
-    DEBUG_MSG(CACHE_COMP, LowPrio, "No tag match");
+    //DEBUG_EXPR(CACHE_COMP, LowPrio, address);
+    //DEBUG_MSG(CACHE_COMP, LowPrio, "No tag match");
     return false;
   } 
-  DEBUG_EXPR(CACHE_COMP, LowPrio, address);
-  DEBUG_MSG(CACHE_COMP, LowPrio, "found");
+  //DEBUG_EXPR(CACHE_COMP, LowPrio, address);
+  //DEBUG_MSG(CACHE_COMP, LowPrio, "found");
   return true;
 }
 
@@ -926,22 +926,31 @@ int CacheMemory<ENTRY>::insertionDataArray(const Address& address)
 	
   lookup(address).m_timeLoad = g_eventQueue_ptr->getTime();
   
-  if(g_DATA_FIFO)
+  if(g_DATA_FIFO) {
 	return ((CirBuf*) dataArray)->insert(address);
+  }
   else
   {
   	CacheMemory* cm = ((CacheMemory*) dataArray);
+  	
+  	
     if( !cm->cacheAvail(address)) {
 	  Address a = cm->cacheProbe(address, 0);
+	  DEBUG_EXPR(CACHE_COMP, HighPrio, a);
 	  
 	  RequestMsg out_msg;      
 	  (out_msg).m_Address = a;
 	  (out_msg).m_Type = CoherenceRequestType_DATA_REPL;
-	  m_chip_ptr->m_L2Cache_dataArrayReplQueue_vec[map_Address_to_L2(address).num]->enqueue(out_msg); 
+	  m_chip_ptr->m_L2Cache_dataArrayReplQueue_vec[map_Address_to_L2(a).num]->enqueue(out_msg); 
 	  
-	  cm->lookup(a).m_Permission = AccessPermission_NotPresent;
+	  cm->lookup(a).m_Permission = AccessPermission_NotPresent;	  
+	  
     }
   	cm->allocateL2(address);
+  	cm->changePermission(address, AccessPermission_Read_Write);
+  	
+  	
+  	//assert(((CacheMemory*) dataArray)->isTagPresent(address));
     return 0;
   }
 
@@ -952,12 +961,16 @@ template<class ENTRY>
 inline 
 void CacheMemory<ENTRY>::evictDataArray(const Address& address) 
 {
+	if (address == Address(0x402c0b500)) cerr << "EVICT " << g_eventQueue_ptr->getTime() << endl;
   assert(address == line_address(address));
   if(!g_DATA_FIFO) assert(((CacheMemory*) dataArray)->isTagPresent(address));
+  
   DEBUG_EXPR(CACHE_COMP, HighPrio, address);
 
   if(g_DATA_FIFO) ((CirBuf*)dataArray)->remove(address);
-  else ((CacheMemory*) dataArray)->lookup(address).m_Permission = AccessPermission_NotPresent;;
+  else ((CacheMemory*) dataArray)->lookup(address).m_Permission = AccessPermission_NotPresent;
+  
+  if(!g_DATA_FIFO) assert(!(((CacheMemory*) dataArray)->isTagPresent(address)));
 
   //ERROR_MSG("Allocate didn't find an available entry");
 }
@@ -1117,6 +1130,7 @@ template<class ENTRY>
 inline 
 void CacheMemory<ENTRY>::setMRU(const Address& address, const NodeID proc)
 {
+
   Index cacheSet;
 
   cacheSet = addressToCacheSet(address);

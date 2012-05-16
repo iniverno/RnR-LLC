@@ -2,6 +2,7 @@
 #include "CirBuf.h"
 #include "MessageBuffer.h"
 
+
 CirBuf::CirBuf (AbstractChip* ac, int tam, int version) {
 	array.setSize(tam);
 	
@@ -39,11 +40,20 @@ uint CirBuf::insert (Address addr) {
 // 		cerr << addr << endl;
 // 		assert(0);
 // 	}
-
-	top = top+1<m_TAM ? top+1 : 0;  // (top++) mod TAMBUF 
+	
+	int reused=-1; //to control de number of "free-lookups", We are looking up the replacement state of the line
+	//without accounting its cost
+	
+	do {
+		top = top+1<m_TAM ? top+1 : 0;  // (top++) mod TAMBUF 
+		reused++;
+	} while(array[top].valid && reused!=g_BLOCKS_FIFO && (m_chip_ptr->isBlockNRU(array[top].addr))  ); //while((((*(m_chip_ptr->m_L2Cache_L2cacheMemory_vec[l2]))).lookup(array[top].addr)).m_NRU && array[top].valid);
+	
+	//if(reused>0) cerr << "we have looked up " << reused << " lines for free" << endl;
 	
 	//  replacement notification to the L3 controller, the protocol has to change to a "without-data" state 
 	if(array[top].valid) {
+		
 		RequestMsg out_msg;      
 		(out_msg).m_Address = array[top].addr;
 		(out_msg).m_Type = CoherenceRequestType_DATA_REPL;

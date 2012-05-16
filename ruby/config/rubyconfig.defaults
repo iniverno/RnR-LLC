@@ -289,6 +289,8 @@ g_TAM_SHADOW: 16
 
 g_DATA_FIFO: false
 g_BLOCKS_FIFO: 32768
+g_DATA_NUM_SETS_BITS: 13
+g_DATA_ASSOC: 16
 
 // TSO is deprecated
 TSO: false

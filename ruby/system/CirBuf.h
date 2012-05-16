@@ -2,6 +2,7 @@
 #define CIRBUF_H
 
 #include "AbstractChip.h"
+
 class AbstractChip;
 
 

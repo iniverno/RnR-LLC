@@ -3654,6 +3654,7 @@ transition(L2_INRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
     nn_addSharer;
     //i_allocateTBE;
     setTimeLast;
+    fjj_insertionDataArray;
     ss_recordGetSL1ID;
     jj_popL1RequestQueue2;
 
@@ -3690,6 +3691,7 @@ transition(L2_INRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
     ww_profileMissNoDir;
     set_setMRU;
      nn_addSharer;
+     fjj_insertionDataArray;
    setTimeLast;
     ss_recordGetSL1ID;
     jj_popL1RequestQueue2;
