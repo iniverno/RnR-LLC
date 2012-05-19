@@ -157,6 +157,11 @@ void profile_L3Cache_miss(GenericRequestType requestType, AccessModeType type, i
   g_system_ptr->getProfiler()->addSecondaryStatSample(requestType, type, msgSize, pfBit, nodeID);
 }
 
+void profile_cache_to_cache(const int delay) 
+{
+	g_system_ptr->getProfiler()->profile_cache_to_cache(delay);
+}
+
 void profile_token_retry(const Address& addr, AccessType type, int count)
 {
   g_system_ptr->getProfiler()->getAddressProfiler()->profileRetry(addr, type, count);

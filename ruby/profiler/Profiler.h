@@ -137,6 +137,7 @@ public:
   void addL15Acceso(const CacheMsg& msg, NodeID id);
   void addL2Acceso(AccessModeType access_mode, NodeID id);
   CacheProfiler* getInstructionCacheProfiler() { return m_L1I_cache_profiler_ptr; }
+  void profile_cache_to_cache(int delay);
   
   void addPrimaryStatSample(const CacheMsg& msg, NodeID id);
   void add15StatSample(const CacheMsg& msg, NodeID id);
@@ -373,6 +374,8 @@ private:
   Histogram m_outstanding_persistent_requests;
 
   Histogram m_average_latency_estimate;
+  
+  Histogram m_c2c_latency;
 
   //---- begin Transactional Memory CODE
   Map <int, int>* m_procsInXactMap_ptr;

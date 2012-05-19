@@ -9,6 +9,7 @@ class AbstractChip;
 struct NodeCirBuf {
 	Address addr;
 	bool valid;
+	bool reused;
 };	
 
 class CirBuf{
@@ -16,6 +17,7 @@ class CirBuf{
 	int m_version;
 	AbstractChip* m_chip_ptr;
 	Vector <NodeCirBuf> array; 
+	Histogram  *m_histoFIFOReuse;
 	
 public:
 	bool isPresent(Address a);
@@ -25,8 +27,11 @@ public:
 	uint insert (Address addr);
 	void remove (Address addr);
 	void remove (uint pos);
+	void setReuse (Address addr);
+	void setReuse (uint pos);
 	Address getData(uint pos);
 	Address getData(Address addr);
+	void printStats();
 };
 
 #endif //CIRBUF_H

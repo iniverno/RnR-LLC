@@ -15,7 +15,13 @@ CirBuf::CirBuf (AbstractChip* ac, int tam, int version) {
 	
 	m_chip_ptr = ac;
 	
-	for(int i=0; i < tam; i++) array[i].valid = false;
+	for(int i=0; i < tam; i++) {
+		array[i].valid = false;
+		array[i].reused = false;
+	}
+	
+	m_histoFIFOReuse = new Histogram(1,100);
+	
 	cerr << "Fuera de CirBuf::CirBuf" << endl;
 }
 
@@ -43,11 +49,24 @@ uint CirBuf::insert (Address addr) {
 	
 	int reused=-1; //to control de number of "free-lookups", We are looking up the replacement state of the line
 	//without accounting its cost
-	
-	do {
+
+// Version that skips lines with the replacement policy NRR bit set	
+/*	do {
 		top = top+1<m_TAM ? top+1 : 0;  // (top++) mod TAMBUF 
 		reused++;
 	} while(array[top].valid && reused!=g_BLOCKS_FIFO && (m_chip_ptr->isBlockNRU(array[top].addr))  ); //while((((*(m_chip_ptr->m_L2Cache_L2cacheMemory_vec[l2]))).lookup(array[top].addr)).m_NRU && array[top].valid);
+*/
+
+// Version that skips lines with the FIFO reused bit set	
+	bool auxReused;
+	do {
+		top = top+1<m_TAM ? top+1 : 0;  // (top++) mod TAMBUF 
+		reused++;						//count how many have been skipped
+		auxReused = array[top].reused;  //keep the result for the loop condition
+		array[top].reused = false;		
+	} while(array[top].valid && auxReused && reused!=g_BLOCKS_FIFO ); //while((((*(m_chip_ptr->m_L2Cache_L2cacheMemory_vec[l2]))).lookup(array[top].addr)).m_NRU && array[top].valid);
+
+	m_histoFIFOReuse->add(reused);
 	
 	//if(reused>0) cerr << "we have looked up " << reused << " lines for free" << endl;
 	
@@ -64,9 +83,12 @@ uint CirBuf::insert (Address addr) {
 	}
 	
 	array[top].addr = addr;
+	array[top].reused = false;
 		
 	return top;
 }
+
+
 
 void CirBuf::remove (Address addr) {
 	for(int i=0;i<m_TAM;i++) if(array[i].addr == addr) array[i].valid = false;
@@ -76,6 +98,15 @@ void CirBuf::remove (Address addr) {
 void CirBuf::remove (uint pos) {
 	array[pos].valid = false;
 	size--;
+}
+
+void CirBuf::setReuse (Address addr){
+	for(int i=0;i<m_TAM;i++) if(array[i].addr == addr) array[i].reused = true;
+}
+
+void CirBuf::setReuse (uint pos){
+	//cerr << "Un puto acierto" << endl;
+	array[pos].reused = true;
 }
 
 Address CirBuf::getData(uint pos) {
@@ -90,3 +121,7 @@ Address CirBuf::getData(Address addr) {
 			return array[i].addr;
 		}
 } 
+
+void CirBuf::printStats() {
+	cerr << "FIFO reuse: " << *m_histoFIFOReuse << endl;
+}

@@ -207,6 +207,9 @@ public:
   int insertionDataArray(const Address& address);
   void evictDataArray(const Address& address);
 
+  void setReuseInDataArray(const Address& address);
+  void setReuseInDataArray(const uint pos);
+  
   // Get/Set permission of cache block
   AccessPermission getPermission(const Address& address) const;
   void changePermission(const Address& address, AccessPermission new_perm);
@@ -304,7 +307,7 @@ private:
   
   Vector<uint64> m_nH [3];
   
-    Histogram  *m_histoReuse;
+  Histogram  *m_histoReuse;
   Histogram  *m_histoReuseThread[16];
   
   CacheMemory* m_shadow;
@@ -480,9 +483,14 @@ CacheMemory<ENTRY>::CacheMemory(AbstractChip* chip_ptr, int numSetBits,
   if(m_version != -1) {
   	if (m_machType == MachineType_L2Cache && g_SHADOW) m_shadow = new CacheMemory(chip_ptr, numSetBits, g_TAM_SHADOW, MachineType_L2Cache, description, -1);  	
   	
-	if(g_DATA_FIFO) dataArray = new CirBuf(chip_ptr, g_BLOCKS_FIFO, version);
+	if(g_DATA_FIFO) {
+		cout << "A FIFO data array with " << g_BLOCKS_FIFO << " is being created" << endl;
+		
+		dataArray = new CirBuf(chip_ptr, g_BLOCKS_FIFO, version);
+	}
 	else {
-	  dataArray = new CacheMemory(chip_ptr, g_DATA_NUM_SETS_BITS, g_DATA_ASSOC, MachineType_L2Cache, description, -1, m_version);  	
+		cout << "A DCACHE data array with 2^" << g_DATA_NUM_SETS_BITS << " sets and " << g_DATA_ASSOC  << " assoc is being created" << endl;
+	  dataArray = new CacheMemory(chip_ptr, g_DATA_NUM_SETS_BITS, g_DATA_ASSOC, MachineType_L2Cache, "DataArray", -1, m_version);  	
 	  ((CacheMemory*)dataArray)->m_version = versionB;
 	}	
   } 
@@ -926,6 +934,7 @@ int CacheMemory<ENTRY>::insertionDataArray(const Address& address)
 	
   lookup(address).m_timeLoad = g_eventQueue_ptr->getTime();
   
+  
   if(g_DATA_FIFO) {
 	return ((CirBuf*) dataArray)->insert(address);
   }
@@ -961,7 +970,6 @@ template<class ENTRY>
 inline 
 void CacheMemory<ENTRY>::evictDataArray(const Address& address) 
 {
-	if (address == Address(0x402c0b500)) cerr << "EVICT " << g_eventQueue_ptr->getTime() << endl;
   assert(address == line_address(address));
   if(!g_DATA_FIFO) assert(((CacheMemory*) dataArray)->isTagPresent(address));
   
@@ -973,6 +981,26 @@ void CacheMemory<ENTRY>::evictDataArray(const Address& address)
   if(!g_DATA_FIFO) assert(!(((CacheMemory*) dataArray)->isTagPresent(address)));
 
   //ERROR_MSG("Allocate didn't find an available entry");
+}
+
+template<class ENTRY>
+inline 
+void CacheMemory<ENTRY>::setReuseInDataArray(const Address& address) 
+{
+	  assert(address == line_address(address));
+	  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
+      
+      if(g_DATA_FIFO) ((CirBuf*)dataArray)->setReuse(address);
+}
+
+template<class ENTRY>
+inline 
+void CacheMemory<ENTRY>::setReuseInDataArray(const uint pos) 
+{
+//	  assert(address == line_address(address));
+//	  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
+      
+      if(g_DATA_FIFO) ((CirBuf*)dataArray)->setReuse(pos);
 }
 
 template<class ENTRY>
@@ -1292,7 +1320,7 @@ void CacheMemory<ENTRY>::printReuseCommand()
   	
   cerr  << "_reuse_total_" << ":\t" <<  *m_histoReuse << endl;
   
-  
+  if(g_DATA_FIFO) ((CirBuf*) dataArray)->printStats();
 }
 
 template<class ENTRY>

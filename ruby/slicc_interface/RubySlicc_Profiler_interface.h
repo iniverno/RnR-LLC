@@ -91,6 +91,7 @@ void profile_filter_action(int action);
 void profile_persistent_prediction(const Address& addr, AccessType type);
 void profile_average_latency_estimate(int latency);
 void profileMsgDelay(int virtualNetwork, int delayCycles);
+void profile_cache_to_cache(const int delay);
 
 void profile_multicast_retry(const Address& addr, int count);
 void profileGetX(const Address& datablock, const Address& PC, const Set& owner, const Set& sharers, NodeID requestor);

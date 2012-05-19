@@ -498,6 +498,8 @@ m_L2_cache_profiler_ptr->calculaRatios();
       }
     }
     out << "miss_latency_L2Miss: " << m_L2MissLatencyHistogram << endl;
+    
+    out << "cache_to_cache_latency: " << m_c2c_latency << endl;
 
     out << endl;
 
@@ -1005,6 +1007,7 @@ void Profiler::clearStats()
   m_read_sharing_histogram.clear();
   m_write_sharing_histogram.clear();
   m_all_sharing_histogram.clear();
+  m_c2c_latency.clear();
   m_cache_to_cache = 0;
   m_memory_to_cache = 0;
 
@@ -1244,6 +1247,11 @@ void Profiler::addL1DAcceso(const CacheMsg& msg, NodeID id)
                                           msg.getAccessMode(), msg.getSize(), msg.getPrefetch(), id);
 }
 
+
+void Profiler::profile_cache_to_cache(int delay)
+{
+	m_c2c_latency.add(delay);
+}
 
 void Profiler::addAddressTraceSample(const CacheMsg& msg, NodeID id)
 {
