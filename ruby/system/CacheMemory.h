@@ -991,6 +991,7 @@ void CacheMemory<ENTRY>::setReuseInDataArray(const Address& address)
 	  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
       
       if(g_DATA_FIFO) ((CirBuf*)dataArray)->setReuse(address);
+      else ((CacheMemory*) dataArray)->setMRU(address, 0);
 }
 
 template<class ENTRY>

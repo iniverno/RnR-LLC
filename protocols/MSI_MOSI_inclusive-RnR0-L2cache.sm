@@ -170,6 +170,10 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     L2_NRS, desc="";
     L2_NRSS, desc="";
     L2_NRMT, desc="";
+    
+    L2_NRSS_MV, desc="";
+    L2_NRMT_IS, desc="";
+    L2_NRMT_IM, desc="";
   }
 
   // EVENTS
@@ -1913,7 +1917,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   
   action(jrdr_setReuseInDataArray, "\jr_dr", desc="") {
 		peek(L1RequestIntraChipL2Network_in, RequestMsg) {
-			L2cacheMemory.setReuseInDataArray(address);
+			L2cacheMemory.setReuseInDataArray(L2cacheMemory[address].posFIFO);
 		}
   }
   
@@ -1955,7 +1959,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   //              L2_SIV, L2_PSIV, L2_SIC, 
   //              L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
   //              L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
-  //              L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS}, 
+  //              L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS, L2_NRMT_IM}, 
   //{L2_Replacement, L2_PrefetchS_Replacement, L2_PrefetchX_Replacement,L1_PUTX, L1_PUTX_last, L1_PUTS, L1_PUTS_last, L1_PUTX_old, L1_PUTS_old, Data_replacement}) {
   //  z_stall;
   //}
@@ -1964,7 +1968,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
                 L2_SIV, L2_PSIV, L2_SIC, 
                 L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
                 L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
-                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS}, 
+                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS,  L2_NRSS_MV,  L2_NRMT_IS, L2_NRMT_IM}, 
   {L2_Replacement, L2_PrefetchS_Replacement, L2_PrefetchX_Replacement}) {
     //xr_recycleResponse;
     x_recycleRequest;
@@ -1974,7 +1978,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
                 L2_SIV, L2_PSIV, L2_SIC, 
                 L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
                 L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
-                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS}, 
+                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS,  L2_NRSS_MV,  L2_NRMT_IS, L2_NRMT_IM}, 
   {L1_PUTX, L1_PUTX_last, L1_PUTS, L1_PUTS_last, L1_PUTX_old, L1_PUTS_old}) {
     x_recycleRequest;
   }
@@ -1983,7 +1987,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
                 L2_SIV, L2_PSIV, L2_SIC, 
                 L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
                 L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
-                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS}, 
+                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS,  L2_NRSS_MV,  L2_NRMT_IS, L2_NRMT_IM}, 
   {Data_replacement}) {
     xd_recycleDataRepl;
   }
@@ -3494,19 +3498,18 @@ transition(L2_NRSS, {L1_GETS, L1_GET_INSTR}, L2_NRSS_IS) {
 	//k_dataFromL2CacheToL1Requestor
 	ddd_setPendingIntAcksToOne;
 	jsr_setReused;
-	fjj_insertionDataArray;
+	//fjj_insertionDataArray;
 	ww_profileMissNoDir;
 	set_setMRU;
 	setTimeLast;
 	jg_issueDownGradeSmallestL1copyRequest;  // Order with respect to nn_addSharer is important!!!!
 	nn_addSharer;
 	ss_recordGetSL1ID;
-    //a_issueGETS;
 	jj_popL1RequestQueue2;
 }
 
-transition(L2_NRSS_IS, Data_int_ack, L2_SS) {
-    jm_writeDataFromResponseQueueToL2Cache;
+transition(L2_NRSS_IS, Data_int_ack, L2_NRSS) {
+    //jm_writeDataFromResponseQueueToL2Cache;
     ee_dataFromL2CacheToGetSIDs;  // could be an internal or external requestor
     jpcc_profileCache2Cache;
     s_deallocateTBE;
@@ -3550,7 +3553,7 @@ transition(L2_NRSS, L1_UPGRADE_no_others, L2_NRMT) {
 	jj_popL1RequestQueue2;
 }
 
-transition(L2_NRSS, L1_GETX, L2_MV) {
+transition(L2_NRSS, L1_GETX, L2_NRSS_MV) {
     uu_profileAccess;
     jsr_setReused;
     i_allocateTBE;  // for both ext. and int.
@@ -3558,15 +3561,13 @@ transition(L2_NRSS, L1_GETX, L2_MV) {
     bbb_setPendingIntAcksToSharers;
     vv_issueInvalidateOtherIntL1copiesRequest;  // for internal
     set_setMRU;
-    fjj_insertionDataArray;
+    //fjj_insertionDataArray;
     setTimeLast;
     nn_addSharer;
-    //b_issueGETX;  // for data
-    //uu_profileMiss;
     jj_popL1RequestQueue2;
 }
 
-transition(L2_NRSS, L1_UPGRADE, L2_MV) {
+transition(L2_NRSS, L1_UPGRADE, L2_NRSS_MV) {
     uu_profileAccess;
     jsr_setReused;
     i_allocateTBE;  // for both ext. and int.
@@ -3574,13 +3575,33 @@ transition(L2_NRSS, L1_UPGRADE, L2_MV) {
     ccc_setPendingIntAcksMinusOne;
     vv_issueInvalidateOtherIntL1copiesRequest;  // for internal
     set_setMRU;
-    fjj_insertionDataArray;
+    //fjj_insertionDataArray;
     setTimeLast;
     nn_addSharer;
-    //b_issueGETX;  // for data
     //uu_profileMiss;
     jj_popL1RequestQueue2;
 }
+
+  transition(L2_NRSS_MV, Proc_int_ack) {
+    aa_removeResponseSharer;
+    r_decrementNumberOfPendingIntAcks;
+    o_popIncomingResponseQueue;
+  }
+
+  transition(L2_NRSS_MV, Proc_last_int_ack, L2_NRMT) {
+    aa_removeResponseSharer;
+    r_decrementNumberOfPendingIntAcks;
+    hh_issueStoreHit;
+    s_deallocateTBE;
+    o_popIncomingResponseQueue;
+  }
+
+  transition(L2_NRSS_MV, {L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others, L1_GETS}) {
+	//z_stall;
+	x_recycleRequest;
+  }
+
+
 
 transition(L2_NRSS, L1_PUTS) {
 	ww_profileMissNoDir;
@@ -3589,13 +3610,14 @@ transition(L2_NRSS, L1_PUTS) {
 	jj_popL1RequestQueue;
 }
   
-transition(L2_NRSS, L1_PUTS_last, L2_NRS) {
+transition(L2_NRSS, L1_PUTS_last, L2_I) {
 	ww_profileMissNoDir;
 	w_sendPutAckToL1Cache;
 	kk_removeRequestSharer;
 	j_set_setMRU;
 	jjj_keepReuseL1;
 	jj_popL1RequestQueue;
+	rr_deallocateL2CacheBlock;
 }
 
 transition(L2_NRSIV, Proc_last_int_ack, L2_I) {
@@ -3614,52 +3636,7 @@ transition(L2_NRSIV, {L1_GETS, L1_GET_INSTR, L1_UPGRADE, L1_UPGRADE_no_others, L
 	x_recycleRequest;
 }
     
-// ===============================================
-  // BASE STATE - NRS
-  // Transitions from S, no L1 copies
-// ===============================================
-transition(L2_NRS, L2_Replacement, L2_I) {
-	jjj_statsPrefetchLocal2;
-	jjj_statsPrefetchLocalS2;
-	ji_marcaRepl;
-	rr_deallocateL2CacheBlock;
-}
 
-transition(L2_NRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
-	uu_profileAccess;
-	i_allocateTBE;  
-	a_issueGETS;
-	ss_recordGetSL1ID;
-	jsr_setReused;
-	fjj_insertionDataArray;
-	jjj_statsPrefetchLocal; 
-	jjj_statsPrefetchLocalS;
-    
-	ww_profileMissNoDir;
-	set_setMRU;
-	nn_addSharer;
-	setTimeLast;
-	jj_popL1RequestQueue2;
-}
-
-
-transition(L2_NRS, L1_GETX, L2_IM) {
-    uu_profileAccess;
-    jsr_setReused;
-    jjj_statsPrefetchLocal;
-    jjj_statsPrefetchLocalS;
-    
-    set_setMRU;
-    fjj_insertionDataArray;
-    nn_addSharer;
-    setTimeLast;
-	i_allocateTBE;
-	xx_recordGetXL1ID;
-
-	b_issueGETX;
-//    uu_profileMiss;
-    jj_popL1RequestQueue2;
-}
   
 /*****************************************************************/
   // Transitions from L2_INRS
@@ -3682,14 +3659,12 @@ transition(L2_NRS, L1_GETX, L2_IM) {
     x_recycleRequest;
   }
 
-transition(L2_INRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
-	//qq_allocateL2CacheBlock;
+transition(L2_INRS, {L1_GETS, L1_GET_INSTR}) {
 	ww_profileMissNoDir;
     set_setMRU;
     nn_addSharer;
-    //i_allocateTBE;
     setTimeLast;
-    fjj_insertionDataArray;
+    //fjj_insertionDataArray;
     ss_recordGetSL1ID;
     jj_popL1RequestQueue2;
 
@@ -3722,14 +3697,8 @@ transition(L2_INRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
 //  L2_INRM
 
 
-  transition(L2_INRM, {L1_GETS,L1_GET_INSTR}, L2_IMO) {
-    ww_profileMissNoDir;
-    set_setMRU;
-     nn_addSharer;
-     fjj_insertionDataArray;
-   setTimeLast;
-    ss_recordGetSL1ID;
-    jj_popL1RequestQueue2;
+  transition(L2_INRM, {L1_GETS,L1_GET_INSTR}) {
+    x_recycleRequest;
   }
 
 //transition(L2_INRM, L1_GETX, L2_INRMZ) {  // don't go there, just go to stall state
@@ -3789,7 +3758,7 @@ transition(L2_NRMT, L2_Replacement, L2_NRMIV) {
 	v_issueInvalidateIntL1copyRequest;
 }
 
-transition(L2_NRMT, {L1_GETS, L1_GET_INSTR}, L2_MO) {
+transition(L2_NRMT, {L1_GETS, L1_GET_INSTR}, L2_NRMT_IS) {
     uu_profileAccess;
     jsr_setReused;
     ww_profileMissNoDir;
@@ -3798,13 +3767,13 @@ transition(L2_NRMT, {L1_GETS, L1_GET_INSTR}, L2_MO) {
     g_issueDownGradeIntL1copiesRequest;
     ss_recordGetSL1ID;
     set_setMRU;
-    fjj_insertionDataArray;
+    //fjj_insertionDataArray;
     setTimeLast;
     nn_addSharer;
     jj_popL1RequestQueue2;
 }
 
-transition(L2_NRMT, L1_GETX, L2_MIT) {
+transition(L2_NRMT, L1_GETX, L2_NRMIT) {
     uu_profileAccess;
     jsr_setReused;
     ww_profileMissNoDir;
@@ -3812,7 +3781,7 @@ transition(L2_NRMT, L1_GETX, L2_MIT) {
     bbb_setPendingIntAcksToSharers;
     v_issueInvalidateIntL1copyRequest;
     set_setMRU;
-    fjj_insertionDataArray;
+    //fjj_insertionDataArray;
     setTimeLast;
     nn_addSharer;
     xx_recordGetXL1ID;
@@ -3821,6 +3790,31 @@ transition(L2_NRMT, L1_GETX, L2_MIT) {
 
 
 
+transition(L2_NRMT_IS, Data_int_ack, L2_NRSS) {
+    //jm_writeDataFromResponseQueueToL2Cache;
+    ee_dataFromL2CacheToGetSIDs;  // could be an internal or external requestor
+    jpcc_profileCache2Cache;
+    s_deallocateTBE;
+    o_popIncomingResponseQueue;
+  }  
+
+  
+transition(L2_NRMT_IS, {L1_GETS, L1_GET_INSTR}) {
+    jsr_setReused;
+    ww_profileMissNoDir;
+    set_setMRU;
+    setTimeLast;
+    nn_addSharer;
+    ss_recordGetSL1ID;
+    jj_popL1RequestQueue2;
+  }
+
+  transition(L2_NRMT_IS, {L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
+	//z_stall;
+	x_recycleRequest;
+  }
+  
+  
 
 //Option 1
 //  transition(L2_NRMT, L1_PUTX_last, L2_M) {
@@ -3835,12 +3829,13 @@ transition(L2_NRMT, L1_GETX, L2_MIT) {
 //  }
 
 //option 2
-transition(L2_NRMT, L1_PUTX_last, L2_NRS) {
+transition(L2_NRMT, L1_PUTX_last, L2_I) {
 	w_sendPutAckToL1Cache;
 	kk_removeRequestSharer;
 	m_writeDataFromRequestQueueToL2Cache;
     d_issuePUTX;
     jj_popL1RequestQueue;
+    rr_deallocateL2CacheBlock;
 }
 
 
