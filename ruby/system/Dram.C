@@ -483,6 +483,8 @@ return binstr;
         if(!(banks[i].bankBusyBitmap & (hit ? (request.write ? Dram::writeHitBankBusyMask : Dram::readHitBankBusyMask) \
         		: (request.write ? Dram::writeMissBankBusyMask : Dram::readMissBankBusyMask)))) //si el banco puede estar libre para la petici—n elegida
         {   
+        
+        	cerr << "core: " << request.core << "\t" << " bank: "<< i << "\t" << (request.write ? "W" : "R") << endl; 
           //la petici—n puede ser servida
           //actualizamos tablas de ocupaci—n
           if(request.write) busBusyBitmap |= (hit ? writeHitBusBusyMask : writeMissBusBusyMask);
