@@ -1336,7 +1336,13 @@ void CacheMemory<ENTRY>::printTempCommand()
 	{
 		for (int j = 0; j < m_cache_assoc; j++) 
 		{
-        	if(m_cache[i][j].m_Permission != AccessPermission_NotPresent) printTemp(m_cache[i][j].m_Address);
+        	if(m_cache[i][j].m_Permission != AccessPermission_NotPresent &&\
+        	(m_cache[i][j].m_CacheState == L2Cache_State_L2_M ||\
+        	m_cache[i][j].m_CacheState == L2Cache_State_L2_MT ||\
+        	m_cache[i][j].m_CacheState == L2Cache_State_L2_S ||\
+        	m_cache[i][j].m_CacheState == L2Cache_State_L2_SS ||\
+        	m_cache[i][j].m_CacheState == L2Cache_State_L2_O ||\
+        	m_cache[i][j].m_CacheState == L2Cache_State_L2_SO)) printTemp(m_cache[i][j].m_Address);
         
         	n_bloques++;
     	}
@@ -1346,8 +1352,15 @@ void CacheMemory<ENTRY>::printTempCommand()
   cerr << "PRINT_TEMP" << endl;
  // for(int i=0; i<10000; i++) cerr << timeLoadArray[i] << "\t" << timeLastArray[i]  << "\t" <<timeReplArray[i] << endl;
   
-  
-  for(int i=1; i<50000; i++)
+  int max;
+  for(int i=49999; i>-1; i--) 
+  	if(timeLoadArray[i] != 0) { 
+  		max = i;
+  		break;
+  	}
+  	
+  	cerr << max << endl;
+  for(int i=1; i<max; i++)
   {    
     cerr << timeLoadArray[i] << "\t" << (float)timeLoadArray[i] / (float)(n_bloques) << endl;
   }
