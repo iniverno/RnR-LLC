@@ -74,6 +74,7 @@ enumeration(CoherenceRequestType, desc="...") {
   EXE_ACK,   desc="EXclusivE ACKnowledgment";
   PREFS, desc="read prefetch";
   PREFX, desc="read prefetch";
+  PREFUPG, desc="prefetch upgrade";
 }
 
 // CoherenceResponseType
@@ -85,6 +86,7 @@ enumeration(CoherenceResponseType, desc="...") {
   DATA,      desc="Data";
   DATA_S,    desc="Data to L1 cache, then imediately go to shared state";
   DATA_I,    desc="Data to L1 cache, then imediately go to inv state";
+  DATA_P,    desc="Data to L1 cache, Prefetched DATA";
   FINALACK,  desc="";
   
 }

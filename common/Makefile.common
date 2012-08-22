@@ -127,7 +127,9 @@ OPT_FLAGS += -g -ggdb -g3
 #OPT_FLAGS += -O1
 #OPT_FLAGS += -O2 -finline-functions 
 
-OPT_FLAGS += -O2 -g -finline-functions -DNO_VECTOR_BOUNDS_CHECKS -DMULTIFACET_NO_OPT_WARN
+OPT_FLAGS += -O3 -g -finline-functions -DNO_VECTOR_BOUNDS_CHECKS -DMULTIFACET_NO_OPT_WARN
+
+#OPT_FLAGS += -O0 -g -DNO_VECTOR_BOUNDS_CHECKS -DMULTIFACET_NO_OPT_WARN
 
 CP := /bin/cp -f 
 MV := /bin/mv -f 

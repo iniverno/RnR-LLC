@@ -65,6 +65,7 @@
 #include "SubBlock.h"
 #include "Chip.h"
 
+
 Check::Check(const Address& address, const Address& pc)
 {
   m_status = TesterStatus_Idle;
@@ -80,7 +81,7 @@ Check::Check(const Address& address, const Address& pc)
 void Check::initiate()
 {
   DEBUG_MSG(TESTER_COMP, MedPrio, "initiating");
-  DEBUG_EXPR(TESTER_COMP, MedPrio, *this);
+  //DEBUG_EXPR(TESTER_COMP, MedPrio, *this);
 
   // current CMP protocol doesn't support prefetches
   if (!Protocol::m_CMP && (random() & 0xf) == 0) { // 1 in 16 chance
@@ -142,11 +143,11 @@ void Check::initiateAction()
     DEBUG_MSG(TESTER_COMP, MedPrio, "failed to initiate action - sequencer not ready\n");
   } else {
     DEBUG_MSG(TESTER_COMP, MedPrio, "initiating action - successful\n");
-    DEBUG_EXPR(TESTER_COMP, MedPrio, m_status);
+    //DEBUG_EXPR(TESTER_COMP, MedPrio, m_status);
     m_status = TesterStatus_Action_Pending;
     sequencer_ptr->makeRequest(request);
   }
-  DEBUG_EXPR(TESTER_COMP, MedPrio, m_status);
+  //DEBUG_EXPR(TESTER_COMP, MedPrio, m_status);
 }
 
 void Check::initiateCheck()
@@ -179,7 +180,7 @@ void Check::performCallback(NodeID proc, SubBlock& data)
   assert(getAddress().getLineAddress() == address.getLineAddress());
   
   DEBUG_MSG(TESTER_COMP, MedPrio, "Callback");
-  DEBUG_EXPR(TESTER_COMP, MedPrio, *this);
+  //DEBUG_EXPR(TESTER_COMP, MedPrio, *this);
 
   if (m_status == TesterStatus_Action_Pending) {
     DEBUG_MSG(TESTER_COMP, MedPrio, "Action callback");
@@ -209,8 +210,8 @@ void Check::performCallback(NodeID proc, SubBlock& data)
       }
     } 
     DEBUG_MSG(TESTER_COMP, HighPrio, "Action/check success:");
-    DEBUG_EXPR(TESTER_COMP, HighPrio, *this);
-    DEBUG_EXPR(TESTER_COMP, MedPrio, data);
+    //DEBUG_EXPR(TESTER_COMP, HighPrio, *this);
+    //DEBUG_EXPR(TESTER_COMP, MedPrio, data);
 
     m_status = TesterStatus_Idle;
     pickValue();
@@ -224,11 +225,11 @@ void Check::performCallback(NodeID proc, SubBlock& data)
     ERROR_MSG("Unexpected TesterStatus");
   }
   
-  DEBUG_EXPR(TESTER_COMP, MedPrio, proc);
-  DEBUG_EXPR(TESTER_COMP, MedPrio, data);
-  DEBUG_EXPR(TESTER_COMP, MedPrio, getAddress().getLineAddress());
+  //DEBUG_EXPR(TESTER_COMP, MedPrio, proc);
+  //DEBUG_EXPR(TESTER_COMP, MedPrio, data);
+  //DEBUG_EXPR(TESTER_COMP, MedPrio, getAddress().getLineAddress());
   DEBUG_MSG(TESTER_COMP, MedPrio, "Callback done");
-  DEBUG_EXPR(TESTER_COMP, MedPrio, *this);
+  //DEBUG_EXPR(TESTER_COMP, MedPrio, *this);
 }
 
 void Check::changeAddress(const Address& address)
@@ -276,3 +277,5 @@ void Check::print(ostream& out) const
       << m_store_count
       << "]" << flush;
 }
+
+

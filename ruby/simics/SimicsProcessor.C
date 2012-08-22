@@ -92,6 +92,7 @@ extern "C" {
   #define PRIV_MODE (mem_trans->mode)
 #endif
 
+
 // Constructor
 SimicsProcessor::SimicsProcessor(System* sys_ptr, int proc) {
   m_proc = proc;

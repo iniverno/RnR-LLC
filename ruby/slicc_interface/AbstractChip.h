@@ -102,6 +102,7 @@ public:
   Sequencer* getSequencer(int index) const { return m_L1Cache_sequencer_vec[index]; };
   //JORGE
   Prefetcher* getPrefetcher(int index) const { return m_L2Cache_prefetcher_vec[index]; };
+  Prefetcher* getPrefetcherL1(int index) const { return m_L1Cache_prefetcher_vec[index]; };
   Dram* getDram(int index) const 
   {
   
@@ -143,6 +144,7 @@ public:
   Vector < MessageBuffer* > m_L1Cache_optionalQueue_vec;
   Vector < MessageBuffer* >m_L1Cache_mandatoryQueue_vec;
 
+
   // TSO storebuffer
   Vector < StoreBuffer* > m_L1Cache_storeBuffer_vec;
 
@@ -151,6 +153,8 @@ public:
   
  
   //JORGE
+  Vector < MessageBuffer* >  m_L1Cache_prefetchQueue_vec; // All chip should have a sequencer
+  Vector < Prefetcher* >  m_L1Cache_prefetcher_vec;
   Vector < MessageBuffer* >  m_L2Cache_prefetchQueue_vec; // All chip should have a sequencer
   Vector < Prefetcher* >  m_L2Cache_prefetcher_vec;
   Vector < MessageBuffer* >  m_Directory_dramToDirQueue_vec;

@@ -214,7 +214,7 @@ USER_MODE_ONLY: false
 
 g_PREFETCHER: 0  //Prebusqueda activada
 g_PREFETCH_MECH: 10  //  1=SEQuential Tagged, 2=PDFCM
-g_PREFETCH_DEGREE: 10
+g_PREFETCH_DEGREE: 1
 g_INSTRUCTIONS_TO_SIMULATE: 0  //num inst de usuario por proc
 g_ADAPT_DEGREE: 1  //el grado es adaptativo?
 g_THREADS_IN_EX: 16  //si es menor que el nœmero de procesadores tendremos en cuenta el num de inst del proc 0

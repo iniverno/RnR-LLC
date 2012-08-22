@@ -4,6 +4,7 @@
 #define DEBUG_SET2 1
 #define DEBUGED2 991
 
+
 CacheMemoryQuick::CacheMemoryQuick(int numSetBits, int cacheAssoc, const MachineTypeQuick machType, CacheMgr* a, char* name, int version)
 {
    m_version = version;
@@ -329,7 +330,7 @@ int CacheMemoryQuick::findTagInSet(Index cacheSet, const Address& tag) const
 int CacheMemoryQuick::getWay(const Address& address)
 {
   assert(address == line_address(address));
-  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
+  //DEBUG_EXPR(CACHE_COMP, HighPrio, address);
   Index cacheSet = addressToCacheSet(address);
   
   int loc = findTagInSet(cacheSet, address);
@@ -400,7 +401,7 @@ int CacheMemoryQuick::tryCacheAccess(const Address& address,
                                            CacheRequestTypeQuick type, uint proc)
 {
   assert(address == line_address(address));
-  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
+  //DEBUG_EXPR(CACHE_COMP, HighPrio, address);
   Index cacheSet = addressToCacheSet(address);
   int loc = findTagInSet(cacheSet, address);
 
@@ -489,7 +490,7 @@ bool CacheMemoryQuick::testCacheAccess(const Address& address,
                                            CacheRequestTypeQuick type)
 {
   assert(address == line_address(address));
-  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
+  //DEBUG_EXPR(CACHE_COMP, HighPrio, address);
   Index cacheSet = addressToCacheSet(address);
   int loc = findTagInSet(cacheSet, address);
   if(loc != -1){ // Do we even have a tag match?
@@ -510,11 +511,11 @@ bool CacheMemoryQuick::isTagPresent(const Address& address) const
 
   if (location == -1) {
     // We didn't find the tag
-    DEBUG_EXPR(CACHE_COMP, LowPrio, address);
+    //DEBUG_EXPR(CACHE_COMP, LowPrio, address);
     DEBUG_MSG(CACHE_COMP, LowPrio, "No tag match");
     return false;
   } 
-  DEBUG_EXPR(CACHE_COMP, LowPrio, address);
+  //DEBUG_EXPR(CACHE_COMP, LowPrio, address);
   DEBUG_MSG(CACHE_COMP, LowPrio, "found");
   return true;
 }
@@ -530,11 +531,11 @@ bool CacheMemoryQuick::wasTagPresent(const Address& address) const
 
   if (location == -1) {
     // We didn't find the tag
-    DEBUG_EXPR(CACHE_COMP, LowPrio, address);
+    //DEBUG_EXPR(CACHE_COMP, LowPrio, address);
     DEBUG_MSG(CACHE_COMP, LowPrio, "No tag match");
     return false;
   } 
-  DEBUG_EXPR(CACHE_COMP, LowPrio, address);
+  //DEBUG_EXPR(CACHE_COMP, LowPrio, address);
   DEBUG_MSG(CACHE_COMP, LowPrio, "found");
   return true;
 }
@@ -572,7 +573,7 @@ void CacheMemoryQuick::allocate(const Address& address, const uint proc)
   assert(address == line_address(address));
   assert(!isTagPresent(address));
   assert(cacheAvail(address));
-  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
+  //DEBUG_EXPR(CACHE_COMP, HighPrio, address);
 
 assert(m_machType != MachineTypeQuick_L2Cache);
   // Find the first open slot
@@ -621,7 +622,7 @@ void CacheMemoryQuick::allocateL2(const Address& address, const uint proc)
   assert(address == line_address(address));
   assert(!isTagPresent(address));
   assert(cacheAvail(address));
-  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
+  //DEBUG_EXPR(CACHE_COMP, HighPrio, address);
 
   // Find the first open slot
   Index cacheSet = addressToCacheSet(address);
@@ -675,7 +676,7 @@ void CacheMemoryQuick::deallocate(const Address& address)
 {
   assert(address == line_address(address));
   assert(isTagPresent(address));
-  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
+  //DEBUG_EXPR(CACHE_COMP, HighPrio, address);
 
 	CacheEntryQuick a = lookup(address);
 	(m_machType==MachineTypeQuick_L2Cache) ? \
@@ -1049,7 +1050,7 @@ void CacheMemoryQuick::setTimeLast(const Address& address)
 if(m_version==0 && !g_CARGA_CACHE)
 {
   assert(address == line_address(address));
-  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
+  //DEBUG_EXPR(CACHE_COMP, HighPrio, address);
   Index cacheSet = addressToCacheSet(address);
   int loc = findTagInSet(cacheSet, address);
   assert(loc!=-1);
@@ -1193,3 +1194,4 @@ void CacheMemoryQuick::printSet(ostream& out, uint set)
     }
 
 }
+

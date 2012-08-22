@@ -651,3 +651,4 @@ int TransactionSimicsProcessor::computeFirstXactAccessCost(memory_transaction_t 
       return firstXactAccessCost;
 }      
 */
+

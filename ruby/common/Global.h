@@ -132,6 +132,5 @@ extern inline int max_tokens()
   return 1024;
 }
 
-
 #endif //GLOBAL_H
 

@@ -654,13 +654,13 @@ int CacheMemory<ENTRY>::findTagInSet(Index cacheSet, const Address& tag) const
 // PUBLIC METHODS
 template<class ENTRY>
 inline 
-int CacheMemory<ENTRY>::getWay(const Address& address)
+int CacheMemory<ENTRY>::getWay(const Address& addr)
 {
-  assert(address == line_address(address));
-  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
-  Index cacheSet = addressToCacheSet(address);
+  assert(addr == line_address(addr));
+  DEBUG_EXPR(CACHE_COMP, HighPrio, addr);
+  Index cacheSet = addressToCacheSet(addr);
   
-  int loc = findTagInSet(cacheSet, address);
+  int loc = findTagInSet(cacheSet, addr);
   
   assert(loc!=-1);
   return loc;
@@ -701,15 +701,15 @@ int CacheMemory<ENTRY>::findTagInSetIgnorePermissions(Index cacheSet, const Addr
 // PUBLIC METHODS
 template<class ENTRY>
 inline 
-bool CacheMemory<ENTRY>::tryCacheAccess(const Address& address, 
+bool CacheMemory<ENTRY>::tryCacheAccess(const Address& addr, 
                                            CacheRequestType type, 
                                            DataBlock*& data_ptr, 
                                            uint proc)
 {
-  assert(address == line_address(address));
-  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
-  Index cacheSet = addressToCacheSet(address);
-  int loc = findTagInSet(cacheSet, address);
+  assert(addr == line_address(addr));
+  DEBUG_EXPR(CACHE_COMP, HighPrio, addr);
+  Index cacheSet = addressToCacheSet(addr);
+  int loc = findTagInSet(cacheSet, addr);
   if(loc != -1){ // Do we even have a tag match?
     ENTRY& entry = m_cache[cacheSet][loc];
     
@@ -738,14 +738,14 @@ bool CacheMemory<ENTRY>::tryCacheAccess(const Address& address,
 // (in Sequencer.C)
 template<class ENTRY>
 inline 
-bool CacheMemory<ENTRY>::testCacheAccess(const Address& address, 
+bool CacheMemory<ENTRY>::testCacheAccess(const Address& addr, 
                                            CacheRequestType type, 
                                            DataBlock*& data_ptr)
 {
-  assert(address == line_address(address));
-  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
-  Index cacheSet = addressToCacheSet(address);
-  int loc = findTagInSet(cacheSet, address);
+  assert(addr == line_address(addr));
+  DEBUG_EXPR(CACHE_COMP, HighPrio, addr);
+  Index cacheSet = addressToCacheSet(addr);
+  int loc = findTagInSet(cacheSet, addr);
   if(loc != -1){ // Do we even have a tag match?
     //ENTRY& entry = m_cache[cacheSet][loc];
     m_replacementPolicy_ptr->touch(cacheSet, loc, g_eventQueue_ptr->getTime(), 0);
@@ -762,19 +762,19 @@ bool CacheMemory<ENTRY>::testCacheAccess(const Address& address,
 // tests to see if an address is present in the cache
 template<class ENTRY>
 inline 
-bool CacheMemory<ENTRY>::isTagPresent(const Address& address) const
+bool CacheMemory<ENTRY>::isTagPresent(const Address& addr) const
 {
-  assert(address == line_address(address));
-  Index cacheSet = addressToCacheSet(address);
-  int location = findTagInSet(cacheSet, address);
+  assert(addr == line_address(addr));
+  Index cacheSet = addressToCacheSet(addr);
+  int location = findTagInSet(cacheSet, addr);
 
   if (location == -1) {
     // We didn't find the tag
-    DEBUG_EXPR(CACHE_COMP, LowPrio, address);
+    DEBUG_EXPR(CACHE_COMP, LowPrio, addr);
     DEBUG_MSG(CACHE_COMP, LowPrio, "No tag match");
     return false;
   } 
-  DEBUG_EXPR(CACHE_COMP, LowPrio, address);
+  DEBUG_EXPR(CACHE_COMP, LowPrio, addr);
   DEBUG_MSG(CACHE_COMP, LowPrio, "found");
   return true;
 }
@@ -783,19 +783,19 @@ bool CacheMemory<ENTRY>::isTagPresent(const Address& address) const
 //JORGE
 template<class ENTRY>
 inline 
-bool CacheMemory<ENTRY>::wasTagPresent(const Address& address) const
+bool CacheMemory<ENTRY>::wasTagPresent(const Address& addr) const
 {
-  assert(address == line_address(address));
-  Index cacheSet = addressToCacheSet(address);
-  int location = foundTagInSet(cacheSet, address);
+  assert(addr == line_address(addr));
+  Index cacheSet = addressToCacheSet(addr);
+  int location = foundTagInSet(cacheSet, addr);
 
   if (location == -1) {
     // We didn't find the tag
-    DEBUG_EXPR(CACHE_COMP, LowPrio, address);
+    DEBUG_EXPR(CACHE_COMP, LowPrio, addr);
     DEBUG_MSG(CACHE_COMP, LowPrio, "No tag match");
     return false;
   } 
-  DEBUG_EXPR(CACHE_COMP, LowPrio, address);
+  DEBUG_EXPR(CACHE_COMP, LowPrio, addr);
   DEBUG_MSG(CACHE_COMP, LowPrio, "found");
   return true;
 }
@@ -830,15 +830,15 @@ bool CacheMemory<ENTRY>::cacheAvail(const Address& address) const
 
 template<class ENTRY>
 inline 
-void CacheMemory<ENTRY>::allocate(const Address& address) 
+void CacheMemory<ENTRY>::allocate(const Address& addr) 
 {
-  assert(address == line_address(address));
-  assert(!isTagPresent(address));
-  assert(cacheAvail(address));
-  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
+  assert(addr == line_address(addr));
+  assert(!isTagPresent(addr));
+  assert(cacheAvail(addr));
+  DEBUG_EXPR(CACHE_COMP, HighPrio, addr);
 
   // Find the first open slot
-  Index cacheSet = addressToCacheSet(address);
+  Index cacheSet = addressToCacheSet(addr);
   for (int i=0; i < m_cache_assoc; i++) {
     if (m_cache[cacheSet][i].m_Permission == AccessPermission_NotPresent) {
       //Address a=m_cache[cacheSet][i].m_Last_Address;
@@ -850,7 +850,7 @@ void CacheMemory<ENTRY>::allocate(const Address& address)
       m_cache[cacheSet][i].m_prevSharers= a.m_prevSharers;
        m_cache[cacheSet][i].m_prefTypeRepl= a.m_prefTypeRepl;
 	  m_cache[cacheSet][i].m_Last_Address=a.m_Address;
-      m_cache[cacheSet][i].m_Address = address;
+      m_cache[cacheSet][i].m_Address = addr;
       m_cache[cacheSet][i].m_Permission = AccessPermission_Invalid;
       m_cache[cacheSet][i].m_reusedL1 = false;
       m_cache[cacheSet][i].m_reused = false;
@@ -865,15 +865,15 @@ void CacheMemory<ENTRY>::allocate(const Address& address)
 
 template<class ENTRY>
 inline 
-void CacheMemory<ENTRY>::allocateL2(const Address& address) 
+void CacheMemory<ENTRY>::allocateL2(const Address& addr) 
 {
-  assert(address == line_address(address));
-  assert(!isTagPresent(address));
-  assert(cacheAvail(address));
-  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
+  assert(addr == line_address(addr));
+  assert(!isTagPresent(addr));
+  assert(cacheAvail(addr));
+  DEBUG_EXPR(CACHE_COMP, HighPrio, addr);
 
   // Find the first open slot
-  Index cacheSet = addressToCacheSet(address);
+  Index cacheSet = addressToCacheSet(addr);
   
     if( m_version!=-1) {
 	//	cerr << "allocate" << endl;
@@ -905,7 +905,7 @@ void CacheMemory<ENTRY>::allocateL2(const Address& address)
       m_cache[cacheSet][i].m_prevSharers= a.m_prevSharers;
        m_cache[cacheSet][i].m_prefTypeRepl= a.m_prefTypeRepl;
 	  m_cache[cacheSet][i].m_Last_Address=a.m_Address;
-      m_cache[cacheSet][i].m_Address = address;
+      m_cache[cacheSet][i].m_Address = addr;
       m_cache[cacheSet][i].m_Permission = AccessPermission_Invalid;
       m_cache[cacheSet][i].m_uses = 0;
       m_cache[cacheSet][i].m_reused = false;
@@ -952,11 +952,11 @@ void CacheMemory<ENTRY>::initialTouch(const Address& address, const NodeID proc)
 
 template<class ENTRY>
 inline 
-void CacheMemory<ENTRY>::deallocate(const Address& address)
+void CacheMemory<ENTRY>::deallocate(const Address& addr)
 {
-  assert(address == line_address(address));
-  assert(isTagPresent(address));
-  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
+  assert(addr == line_address(addr));
+  assert(isTagPresent(addr));
+  DEBUG_EXPR(CACHE_COMP, HighPrio, addr);
   
   if( m_version!=-1) {
 		//cerr << "deallocate" << endl;
@@ -967,26 +967,26 @@ void CacheMemory<ENTRY>::deallocate(const Address& address)
 
 	if(m_machType == MACHINETYPE_L2CACHE_ENUM && m_version!=-1) {
 		//L2Cache_Entry a = (L2Cache_Entry) lookup(address);
-		m_histoReuseThread[(lookup(address)).m_owner.num]->add((lookup(address)).m_uses);  
-		m_histoReuse->add(( lookup(address)).m_uses);
-		printTemp(address);
+		m_histoReuseThread[(lookup(addr)).m_owner.num]->add((lookup(addr)).m_uses);  
+		m_histoReuse->add(( lookup(addr)).m_uses);
+		printTemp(addr);
 	}
 	
-  lookup(address).m_Last_Address= address;
-  bool NRU = lookup(address).m_NRU;
+  lookup(addr).m_Last_Address= addr;
+  bool NRU = lookup(addr).m_NRU;
   if( m_version == 0) {
-  	int aux = m_LperNHits[lookup(address).m_uses - 1];
+  	int aux = m_LperNHits[lookup(addr).m_uses - 1];
   	if(aux >= 200) m_LperNHits[199]++;
     else m_LperNHits[aux - 1]++;
   }
-  lookup(address).m_Permission = AccessPermission_NotPresent;
+  lookup(addr).m_Permission = AccessPermission_NotPresent;
 
 	if((m_machType==MachineType_L2Cache) && g_SHADOW && m_version != -1 && NRU) {
-		if(!m_shadow->cacheAvail(address)) {
-			Address a = m_shadow->cacheProbe(address, 0);
+		if(!m_shadow->cacheAvail(addr)) {
+			Address a = m_shadow->cacheProbe(addr, 0);
 			m_shadow->deallocate(a);
 		}
-		 m_shadow->allocateL2(address);
+		 m_shadow->allocateL2(addr);
 	}
 
 
@@ -1348,14 +1348,14 @@ void CacheMemory<ENTRY>::resetReuse()
 // PUBLIC METHODS
 template<class ENTRY>
 inline 
-void CacheMemory<ENTRY>::setTimeLast(const Address& address)
+void CacheMemory<ENTRY>::setTimeLast(const Address& addr)
 {
 if(m_version==0 && !g_CARGA_CACHE)
 {
-  assert(address == line_address(address));
-  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
-  Index cacheSet = addressToCacheSet(address);
-  int loc = findTagInSet(cacheSet, address);
+  assert(addr == line_address(addr));
+  DEBUG_EXPR(CACHE_COMP, HighPrio, addr);
+  Index cacheSet = addressToCacheSet(addr);
+  int loc = findTagInSet(cacheSet, addr);
   assert(loc!=-1);
   
   m_cache[cacheSet][loc].m_timeLast = g_eventQueue_ptr->getTime();

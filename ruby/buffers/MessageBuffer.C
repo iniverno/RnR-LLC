@@ -61,6 +61,19 @@
 #include "MessageBuffer.h"
 #include "RubyConfig.h"
 
+#undef DEBUG_MSG
+#define DEBUG_MSG(module, priority, MESSAGE)\
+{\
+  if (RUBY_DEBUG && (!g_DEBUG_ONE_ADDRESS)) {\
+    if (g_debug_ptr->validDebug(module, priority)) {\
+      (* debug_cout_ptr) << "Debug: in fn "\
+           << __PRETTY_FUNCTION__\
+           << " in " << __FILE__ << ":"\
+           << __LINE__ << ": "\
+           << (MESSAGE) << endl << flush;\
+    }\
+  }\
+}
 MessageBuffer::MessageBuffer()
 { 
   m_msg_counter = 0;
@@ -171,7 +184,7 @@ const Message* MessageBuffer::peekAtHeadOfQueue() const
   msg_ptr = m_prio_heap.peekMin().m_msgptr.ref();
   assert(msg_ptr != NULL);
 
-  DEBUG_EXPR(QUEUE_COMP,MedPrio,*msg_ptr);
+  //DEBUG_EXPR(QUEUE_COMP,MedPrio,*msg_ptr);
   DEBUG_NEWLINE(QUEUE_COMP,MedPrio);
   return msg_ptr;
 }
@@ -194,7 +207,7 @@ void MessageBuffer::enqueue(const MsgPtr& message, Time delta)
   DEBUG_NEWLINE(QUEUE_COMP,HighPrio);
   DEBUG_MSG(QUEUE_COMP,HighPrio,"enqueue " + m_name + " time: " 
             + int_to_string(g_eventQueue_ptr->getTime()) + ".");
-  DEBUG_EXPR(QUEUE_COMP,MedPrio,message);
+  //DEBUG_EXPR(QUEUE_COMP,MedPrio,message);
   DEBUG_NEWLINE(QUEUE_COMP,HighPrio);
 
   m_msg_counter++;
@@ -272,7 +285,7 @@ void MessageBuffer::enqueue(const MsgPtr& message, Time delta)
   DEBUG_MSG(QUEUE_COMP,HighPrio,"enqueue " + m_name 
             + " with arrival_time " + int_to_string(arrival_time)
             + " cur_time: " + int_to_string(g_eventQueue_ptr->getTime()) + ".");
-  DEBUG_EXPR(QUEUE_COMP,MedPrio,message);
+  //DEBUG_EXPR(QUEUE_COMP,MedPrio,message);
   DEBUG_NEWLINE(QUEUE_COMP,HighPrio);
 
   // Schedule the wakeup
@@ -305,7 +318,7 @@ void MessageBuffer::dequeue(MsgPtr& message)
   message = m_prio_heap.peekMin().m_msgptr;
 
   pop();
-  DEBUG_EXPR(QUEUE_COMP,MedPrio,message);
+  //DEBUG_EXPR(QUEUE_COMP,MedPrio,message);
 }
 
 int MessageBuffer::dequeue_getDelayCycles()
@@ -393,5 +406,19 @@ void MessageBuffer::print(ostream& out) const
 void MessageBuffer::printStats(ostream& out)
 {
   out << "MessageBuffer: " << m_name << " stats - msgs:" << m_msg_counter << " full:" << m_not_avail_count << endl;
+}
+
+#undef DEBUG_MSG
+#define DEBUG_MSG(module, priority, MESSAGE)\
+{\
+  if (RUBY_DEBUG && (!g_DEBUG_ONE_ADDRESS || (g_DEBUG_ONE_ADDRESS && addr== Address(g_ADDRESS)))) {\
+    if (g_debug_ptr->validDebug(module, priority)) {\
+      (* debug_cout_ptr) << "Debug: in fn "\
+           << __PRETTY_FUNCTION__\
+           << " in " << __FILE__ << ":"\
+           << __LINE__ << ": "\
+           << (MESSAGE) << endl << flush;\
+    }\
+  }\
 }
 

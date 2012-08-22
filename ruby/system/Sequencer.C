@@ -82,6 +82,7 @@
 
 #define XACT_MGR g_system_ptr->getChip(m_chip_ptr->getID())->getTransactionInterfaceManager(m_version)
 
+
 Sequencer::Sequencer(AbstractChip* chip_ptr, int version) {
   m_chip_ptr = chip_ptr;
   m_version = version;
@@ -885,6 +886,8 @@ void Sequencer::makeRequest(const CacheMsg& request) {
 }
 
 bool Sequencer::doRequest(const CacheMsg& request) {
+//cerr << Address(g_ADDRESS);
+
   bool hit = false;
   // Check the fast path
   DataBlock* data_ptr;
@@ -1230,3 +1233,4 @@ bool Sequencer::setRubyMemoryValue(const Address& addr, char *value,
     return true;
   }
 }
+

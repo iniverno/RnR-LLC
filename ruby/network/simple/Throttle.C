@@ -68,6 +68,7 @@
 #include "NetworkMessage.h"
 #include "Protocol.h"
 
+
 const int HIGH_RANGE = 256;
 const int ADJUST_INTERVAL = 50000;
 const int MESSAGE_SIZE_MULTIPLIER = 1000;

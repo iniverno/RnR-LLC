@@ -152,7 +152,7 @@ PerfectSwitch::~PerfectSwitch()
 void PerfectSwitch::wakeup()
 {
 
-  DEBUG_EXPR(NETWORK_COMP, MedPrio, m_switch_id);
+  //DEBUG_EXPR(NETWORK_COMP, MedPrio, m_switch_id);
 
   MsgPtr msg_ptr;
 
@@ -197,12 +197,12 @@ void PerfectSwitch::wakeup()
       // Is there a message waiting?
       while (m_in[incoming][vnet]->isReady()) {
 
-        DEBUG_EXPR(NETWORK_COMP, MedPrio, incoming);
+        //DEBUG_EXPR(NETWORK_COMP, MedPrio, incoming);
 
         // Peek at message
         msg_ptr = m_in[incoming][vnet]->peekMsgPtr();
         net_msg_ptr = dynamic_cast<NetworkMessage*>(msg_ptr.ref());
-        DEBUG_EXPR(NETWORK_COMP, MedPrio, *net_msg_ptr);
+        //DEBUG_EXPR(NETWORK_COMP, MedPrio, *net_msg_ptr);
 
         output_links.clear();
         output_link_destinations.clear();
@@ -242,7 +242,7 @@ void PerfectSwitch::wakeup()
           // pick the next link to look at
           int link = m_link_order[i].m_link;
 
-          DEBUG_EXPR(NETWORK_COMP, MedPrio, m_routing_table[link]);
+          //DEBUG_EXPR(NETWORK_COMP, MedPrio, m_routing_table[link]);
 
           if (msg_destinations.intersectionIsNotEmpty(m_routing_table[link])) {
 
@@ -270,16 +270,16 @@ void PerfectSwitch::wakeup()
           int outgoing = output_links[i];
           enough = enough && m_out[outgoing][vnet]->areNSlotsAvailable(1);
           DEBUG_MSG(NETWORK_COMP, HighPrio, "checking if node is blocked");
-          DEBUG_EXPR(NETWORK_COMP, HighPrio, outgoing);
-          DEBUG_EXPR(NETWORK_COMP, HighPrio, vnet);
-          DEBUG_EXPR(NETWORK_COMP, HighPrio, enough);
+          //DEBUG_EXPR(NETWORK_COMP, HighPrio, outgoing);
+          //DEBUG_EXPR(NETWORK_COMP, HighPrio, vnet);
+          //DEBUG_EXPR(NETWORK_COMP, HighPrio, enough);
         }
 
         // There were not enough resources
         if(!enough) {
           g_eventQueue_ptr->scheduleEvent(this, 1);
           DEBUG_MSG(NETWORK_COMP, HighPrio, "Can't deliver message to anyone since a node is blocked");
-          DEBUG_EXPR(NETWORK_COMP, HighPrio, *net_msg_ptr);
+          //DEBUG_EXPR(NETWORK_COMP, HighPrio, *net_msg_ptr);
           break; // go to next incoming port
         }
         
@@ -343,4 +343,3 @@ void PerfectSwitch::print(ostream& out) const
 {
   out << "[PerfectSwitch " << m_switch_id << "]";
 }
-

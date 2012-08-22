@@ -75,6 +75,9 @@
 #include "TransactionVersionManager.h"
 #include "Sequencer.h"
 
+
+
+
 /*------------------------------------------------------------------------*/
 /* Forward declarations                                                   */
 /*------------------------------------------------------------------------*/
@@ -352,7 +355,7 @@ void OpalInterface::advanceTime( void ) {
   s_advance_counter++;
   if (s_advance_counter == OPAL_RUBY_MULTIPLIER) {
     Time time = g_eventQueue_ptr->getTime() + 1;
-    DEBUG_EXPR(NODE_COMP, HighPrio, time);
+    //DEBUG_EXPR(NODE_COMP, HighPrio, time);
     g_eventQueue_ptr->triggerEvents(time);
     s_advance_counter = 0;
   }
@@ -471,3 +474,5 @@ void OpalInterface::installInterface( mf_ruby_api_t *api ) {
   api->getNumberOutstandingPrefetch = &OpalInterface::getNumberOutstandingPrefetch;
   api->printProgress = &OpalInterface::printProgress;
 }
+
+

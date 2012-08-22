@@ -126,10 +126,10 @@
       if(m_metodo==10 || m_metodo==11)
       {
         n_streams=g_NUMBER_OF_STREAMS*RubyConfig::numberOfProcsPerChip();
-     cout << "n_streams: " << n_streams << endl;
-        streams=new Stream*[n_streams];
+     	cout << "n_streams: " << n_streams << endl;
+        streams = new Stream*[n_streams];
         n_streams_activos=0;
-        for(int j=0; j<n_streams; j++){ streams[j]=new Stream(); streams[j]->state=-1;}
+        for(int j=0; j < n_streams; j++){ streams[j] = new Stream(); streams[j]->state = -1;}
       }
       
       
@@ -180,8 +180,8 @@
       PDFCM_DT=(PDFCM_DT_entry *) calloc(PDFCM_DT_size, sizeof(PDFCM_DT_entry));       
     } 
       
-      m_stride= g_PAGE_INTERLEAVING ? 1 : RubyConfig::numberOfL2CachePerChip();
-      
+      //m_stride= g_PAGE_INTERLEAVING ? 1 : RubyConfig::numberOfL2CachePerChip();
+      m_stride = 1;
     
     if(g_PAGE_INTERLEAVING) cerr <<"el entralazado es por p‡gina" << endl;
     else cerr <<"el entralazado es por bloque" << endl;
@@ -271,6 +271,9 @@
     racc=0; racc2=0; staticK=0; staticK2=0;
     
     ref=1;
+    
+    prefAtPrivateCache = version < RubyConfig::numberOfProcsPerChip();
+    
  }
 
   // Destructor
@@ -340,6 +343,7 @@
   	  
   }
   
+  //STREAMS
   else if(m_metodo==10 || m_metodo==11)
   {
 
@@ -351,11 +355,12 @@
     { 
       flag=0;
       
-      if(streams[i]!=NULL && streams[i]->state==2 && streams[i]->deg>0) 
+      if(streams[i]!=NULL && streams[i]->state==2 && streams[i]->deg > 0) 
       {  
-        streams[i]->E+= RubyConfig::dataBlockBytes() * streams[i]->dir;
+        streams[i]->E += RubyConfig::dataBlockBytes() * streams[i]->dir;
         if(streams[i]->E ==  streams[i]->A + streams[i]->dir * streams[i]->d * RubyConfig::dataBlockBytes())
-        { streams[i]->state=3;
+        { 
+        	streams[i]->state=3;
          
           if(g_DEBUG_PREFETCHER) if(m_version==0 && streams[i]->nproc==6) cerr << "Stream\t" << i <<
             " pasa al estado 3 B:" << streams[i]->A << " [" <<g_system_ptr->getDriver()->getCycleCount(m_version) << "]" <<endl;
@@ -423,7 +428,7 @@
      i= (i==n_streams-1) ? 0 : i+1;
      if(bar==i || flag) break;
     } //while
-  }//
+  }//STREAMS
   
   //if(m_version==0) cerr << "version: "<< m_version << "ciclo: " << g_system_ptr->getDriver()->getCycleCount(m_version) << " proc:"  << m_proc_miss << " grado: " << m_st_degree[m_proc_miss]<< " base: " << m_st_base_degree[m_proc_miss] << endl ;
 
@@ -1324,8 +1329,12 @@ void Prefetcher::getPrefetch()
     assert(uno.req.type == MachineType_L1Cache);
     (out_msg).m_epoch = m_epoch;
          
-    insertadasCache[L1CacheMachIDToProcessorNum(uno.req)]++; //cout << "insertadasCache" << endl;
-    m_chip_ptr->m_L2Cache_prefetchQueue_vec[m_version]->enqueue(out_msg);
+    insertadasCache[L1CacheMachIDToProcessorNum(uno.req)]++; 
+    if(g_PREFETCHER_L1)
+    	m_chip_ptr->m_L1Cache_prefetchQueue_vec[uno.req.num]->enqueue(out_msg);
+    else
+    	m_chip_ptr->m_L2Cache_prefetchQueue_vec[map_Address_to_L2Node(uno.addr)]->enqueue(out_msg);
+    	
     //para las estad’sticas de latencia de las prebœsquedas en el TBE
     //m_map.add(uno.addr, nodoLat(uno.addr,  g_system_ptr->getDriver()->getCycleCount(m_version) , L1CacheMachIDToProcessorNum(m_requestor)));
     
@@ -1754,6 +1763,7 @@ void Prefetcher::print(ostream& out) const { 0;}
      switch(t)
      {
        case 0:
+       	 DEBUG_SLICC( MedPrio, "petici—n tratada (node):", node ); 
          tratadas[proc]++;
          //cout << "tratadas" << endl;
          tratadas_epoch_1[proc]++;
@@ -1761,6 +1771,7 @@ void Prefetcher::print(ostream& out) const { 0;}
          break;
        case 1:
        case 2:
+       	  DEBUG_SLICC( MedPrio, "util (node):", node ); 
          utiles[proc]++;
          utiles_epoch_1[proc]++;
          utiles_epoch_global++;        
@@ -1772,6 +1783,7 @@ void Prefetcher::print(ostream& out) const { 0;}
          //if(g_DEBUG_PREFETCHER)   if(m_version==0 ) cerr << "hace estas epocas: " << m_epoch-epoch << endl;
          break;
        case 3:
+       	  DEBUG_SLICC( MedPrio, "expulsion (node):", node ); 
          inutiles[proc]++;
          inutiles_global++;
          break;
@@ -1936,6 +1948,8 @@ bool Prefetcher::accessStream(Address a, MachineID node, bool miss)
     for(; i<n_streams; i++)
     { 
      
+     	if(streams[i]==NULL) cerr << "Stream invalido" << endl;
+     	
       if(streams[i]!=NULL && streams[i]->state!=-1 && streams[i]->test(aAux, node) )
       {
         
@@ -1949,7 +1963,7 @@ bool Prefetcher::accessStream(Address a, MachineID node, bool miss)
                     streams[i]->A << " " << aAux << " [" <<g_system_ptr->getDriver()->getCycleCount(0) << "]" <<endl;
               s_positivos[nproc]++;
               
-              streams[i]->deg+= degreesS[degree_index[nproc]];
+              streams[i]->deg += degreesS[degree_index[nproc]];
               g_eventQueue_ptr->scheduleEvent(this, 1); 
               //cerr << "encontrado stream valido " << i << endl;
               flag=1;
@@ -1971,12 +1985,12 @@ bool Prefetcher::accessStream(Address a, MachineID node, bool miss)
       switch(streams[i]->state)
       {
         case 0:
-           if(g_DEBUG_PREFETCHER) if(m_version==0 && nproc==6) cerr << "Stream\t" << i << " pasa al estado 1 A:" <<
+           if(g_DEBUG_PREFETCHER) if(m_version==0 && nproc==6 && 0) cerr << "Stream\t" << i << " pasa al estado 1 A:" <<
                     streams[i]->A << " " << aAux << " [" <<g_system_ptr->getDriver()->getCycleCount(0) << "]" <<endl;
-          if(streams[i]->A==aAux) {flag=1; break; }
+          if(streams[i]->A == aAux) {flag=1; break; }
            
-          streams[i]->dir=streams[i]->A < aAux ? 1 : -1; //establecemos la dir
-          streams[i]->last=aAux;  //guardamos la dir para la proxima comparacion
+          streams[i]->dir = streams[i]->A < aAux ? 1 : -1; //establecemos la dir
+          streams[i]->last = aAux;  //guardamos la dir para la proxima comparacion
           if (streams[i]->dir==-1) cout << "desc" << endl;
             
        //   if(g_DEBUG_PREFETCHER)   if(m_version==0 && streams[i]->nproc==4) cerr << " dir: " << streams[i]->dir << endl;
@@ -1989,14 +2003,14 @@ bool Prefetcher::accessStream(Address a, MachineID node, bool miss)
           break;
         case 1:
             
-          aux=streams[i]->last < aAux ? 1 : -1;
+          aux = streams[i]->last < aAux ? 1 : -1;
                                 
-          if(aux==streams[i]->dir) 
+          if(aux == streams[i]->dir) 
           {
-            streams[i]->E=aAux;
-            streams[i]->last=aAux;
+            streams[i]->E = aAux;
+            streams[i]->last = aAux;
             
-            streams[i]->d=distances[degree_index[streams[i]->nproc]];
+            streams[i]->d = distances[degree_index[streams[i]->nproc]];
             
             uint64 daux;
 
@@ -2015,7 +2029,7 @@ bool Prefetcher::accessStream(Address a, MachineID node, bool miss)
             {  //hemos llegado a un tama–o de regi—n igual a d
               
              
-             if(g_DEBUG_PREFETCHER) if(m_version==0 && nproc==6) cerr << "Stream\t" << i << " pasa al estado 3 A:" << 
+             if(g_DEBUG_PREFETCHER) if(m_version==0 && nproc==6 && 0) cerr << "Stream\t" << i << " pasa al estado 3 A:" << 
                       streams[i]->A << " " << aAux << " [" <<g_system_ptr->getDriver()->getCycleCount(0) << "]" <<endl;
                       
              streams[i]->state=3;
@@ -2031,7 +2045,7 @@ bool Prefetcher::accessStream(Address a, MachineID node, bool miss)
           else 
           {
             actualizaLRUstreamsDel(i); 
-            streams[i]->state=-1; 
+            streams[i]->state = -1; 
             n_streams_activos--; 
            
           }
@@ -2050,7 +2064,7 @@ bool Prefetcher::accessStream(Address a, MachineID node, bool miss)
         //if(g_DEBUG_PREFETCHER)  if(m_version==0 &&nproc==4)  cerr << "entradica invalida " << a.getAddress() <<endl;
         actualizaLRUstreamsInv(i); 
         //if(streams[i]!=NULL) delete streams[i]; 
-         if(g_DEBUG_PREFETCHER) if(m_version==0 && nproc==6) cerr << "Stream\t" << i  << " creado por el procesador " << nproc << " (invalida)" << 
+         if(g_DEBUG_PREFETCHER) if(m_version==0 && nproc==6 && 0) cerr << "Stream\t" << i  << " creado por el procesador " << nproc << " (invalida)" << 
           " [" <<g_system_ptr->getDriver()->getCycleCount(0) << "]" << endl;
           
          //if(g_DEBUG_PREFETCHER)  cerr << "Stream\t" << i  << " creado por el procesador " << nproc << " (invalida)" <<
@@ -2098,7 +2112,7 @@ bool Prefetcher::accessStream(Address a, MachineID node, bool miss)
         //if(g_DEBUG_PREFETCHER)   cerr << " vamos a expulsar al stream" << i << endl;
       //  delete streams[i];
        
-      if(g_DEBUG_PREFETCHER) if(m_version==0 && nproc==6) cerr << "Stream\t" << i  << " creado por el procesador " << 
+      if(g_DEBUG_PREFETCHER) if(m_version==0 && nproc==6 && 0 ) cerr << "Stream\t" << i  << " creado por el procesador " << 
               nproc << " [" <<g_system_ptr->getDriver()->getCycleCount(0) << "]" << endl;
               
        //if(g_DEBUG_PREFETCHER) cerr << "Stream\t" << i  << " creado por el procesador " << nproc <<  endl;
@@ -2184,6 +2198,7 @@ bool Stream::test(uint64 a , MachineID node)
 {
          //bool aux=A.getAddress()<a.getAddress() && a.getAddress()<E.getAddress() && node==proc;
          //return aux || (A.getAddress()>a.getAddress() && a.getAddress()>E.getAddress() && node==proc);
+         
   if(A<E) return (a>A && a<E && node==proc);
   else return (a<A && a>E && node==proc);
 }
@@ -2245,78 +2260,89 @@ uint64 Prefetcher::getAccesos()
 
 void Prefetcher::printStats(ostream& out)
 {
+  
   out << cont << endl;
-  if(g_PREFETCHER){
+  if(g_PREFETCHER || g_PREFETCHER_L1){
   out << "prebuscador " << m_version<<" fallos: " << m_misses	 << endl;
   out << "prebuscador " << m_version<<" fallos ultima epoca: " << auxMisses << endl;
   out << "prebuscador " << m_version<<" primeros usos: " << m_firstUses	 << endl;
   out << "prebuscador " << m_version<<" fallos+primeros usos: " << m_misses+m_firstUses	 << endl;
   for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++) out <<  m_misses_1[j]+m_firstUses[j] << "\t";
      out << endl;
-  out << "prebuscador " << m_version<<" generadas ideal: " << ideal << endl;  
-  out << "prebuscador " << m_version<<" generadas real: " << generadas << endl;
-  out << "prebuscador " << m_version<<" insertadas PAB: " << insertadasPAB << endl;
-  out << "prebuscador " << m_version<<" lookups: " << insertadasCache << endl;
-  out << "prebuscador " << m_version<< " tratadas: " << tratadas << endl;
-  out << "prebuscador " << m_version<<" utiles: " << utiles << endl;
-  out << "prebuscador " << m_version<<" inutiles: " << inutiles << endl;
-  
-  out << "prebuscador " << m_version<<" fallos primarios: " << m_misses_1_proc << endl;
-  out << "prebuscador " << m_version<<" fallos secundarios: " << misses2 << endl;
-   
-  out << "latencia gral: " << lats_gral << endl;
-  out << "latencia demand: " << lats_demand << endl;
-  out << "latencia prefetch: " << lats_pref << endl;
-  out << "prebuscador " << m_version << " lat media en el TBE: "<< (double)lat_acum_todos/(double)m_misses <<  endl;
-  for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++) out << (double)lat_acum_1[j]/(double)m_misses_1_proc[j] << "\t";
-   out << endl;
-  Vector <double> utilidad; utilidad.setSize(RubyConfig::numberOfProcsPerChip());
-  
-   for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++)  if(tratadas[j]!=0) utilidad[j]=(double)utiles[j] / (double)tratadas[j];
+     
+  if(prefAtPrivateCache) {
+	  out << "prebuscador " << m_version<<" generadas ideal:\t" << ideal[m_version] << endl;  
+	  out << "prebuscador " << m_version<<" generadas real:\t" << generadas[m_version] << endl;
+	  out << "prebuscador " << m_version<<" insertadas PAB:\t" << insertadasPAB[m_version]  << endl;
+	  out << "prebuscador " << m_version<<" lookups:\t" << insertadasCache[m_version]  << endl;
+	  out << "prebuscador " << m_version<< " tratadas:\t" << tratadas[m_version]  << endl;
+	  out << "prebuscador " << m_version<<" utiles:\t" << utiles[m_version]  << endl;
+	  out << "prebuscador " << m_version<<" inutiles:\t" << inutiles[m_version] << endl;
+	  
+	  float utilidad;
+	  if(tratadas[m_version]!=0) utilidad=(float)utiles[m_version] / (float)tratadas[m_version];
    	
-  out << "prebuscador " << m_version << " utilidad: " << utilidad << endl;
-   out << "prebuscador " << m_version << " long media de la cadena restante por grado y proc:" << endl;   
-   
-   
-   for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++) 
-   {
-     for(int k=0; k<11; k++) 
-       out << (double)cadenas_valor[j][k] / (double)cadenas_nelems[j][k] << "\t";
-     out << endl;
-  }  
+      out << "prebuscador " << m_version << " utilidad: " << utilidad << endl;
+      
+  } else {
+  	  out << "prebuscador " << m_version<<" generadas ideal:\t" << ideal << endl;  
+	  out << "prebuscador " << m_version<<" generadas real:\t" << generadas << endl;
+	  out << "prebuscador " << m_version<<" insertadas PAB:\t" << insertadasPAB << endl;
+	  out << "prebuscador " << m_version<<" lookups:\t" << insertadasCache << endl;
+	  out << "prebuscador " << m_version<< " tratadas:\t" << tratadas << endl;
+	  out << "prebuscador " << m_version<<" utiles:\t" << utiles << endl;
+	  out << "prebuscador " << m_version<<" inutiles:\t" << inutiles << endl;
+	
+	  Vector <float> utilidad; utilidad.setSize(RubyConfig::numberOfProcsPerChip());
   
-    out << "prebuscador " << m_version<<" grados:" << endl;
-    for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++)
-    {
-      for(int k=0; k<11; k++) out << histo_degrees[j][k] << "\t";
-      out << endl;
-    }
+   	  for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++)  if(tratadas[j]!=0) utilidad[j]=(float)utiles[j] / (float)tratadas[j];
+   	
+      out << "prebuscador " << m_version << " utilidad: " << utilidad << endl;
+
+  }
+  
+  
+
+//   out << "prebuscador " << m_version << " long media de la cadena restante por grado y proc:" << endl;   
+//    for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++) 
+//    {
+//      for(int k=0; k<11; k++) 
+//        out << (double)cadenas_valor[j][k] / (double)cadenas_nelems[j][k] << "\t";
+//      out << endl;
+//   }  
+//   
+//     out << "prebuscador " << m_version<<" grados:" << endl;
+//     for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++)
+//     {
+//       for(int k=0; k<11; k++) out << histo_degrees[j][k] << "\t";
+//       out << endl;
+//     }
+//     
+//     uint64 aux=0;
+//     
+//     out << "prebuscador " << m_version<<" epoca de uso de las prebusquedas:" << endl;
+//     out << "prebuscador " << m_version<<"global:  " ;
+//     for(int k=0; k<n_epochs; k++) { aux+= pref_epoch_global[k]; out << pref_epoch_global[k] << "\t";}
+//       out << endl;
+//     out << "prebuscador " << m_version<<" right epoch global ratio:  " << (double)pref_epoch_global[0]/(double)aux << endl;  
+//      for(int k=0; k<n_epochs; k++) out << pref_epoch_global[k] << "\t";
+//       out << endl;
     
-    uint64 aux=0;
-    
-    out << "prebuscador " << m_version<<" epoca de uso de las prebusquedas:" << endl;
-    out << "prebuscador " << m_version<<"global:  " ;
-    for(int k=0; k<n_epochs; k++) { aux+= pref_epoch_global[k]; out << pref_epoch_global[k] << "\t";}
-      out << endl;
-    out << "prebuscador " << m_version<<" right epoch global ratio:  " << (double)pref_epoch_global[0]/(double)aux << endl;  
-     for(int k=0; k<n_epochs; k++) out << pref_epoch_global[k] << "\t";
-      out << endl;
-    
-    out << "prebuscador " << m_version<<"local:  " << endl; 
-    for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++)
-    {
-      for(int k=0; k<n_epochs; k++) out << pref_epoch_1[j][k] << "\t";
-      out << endl;
-    }
-    
-    out << "prebuscador " << m_version<<" right epoch local ratio: " << endl ;
-    for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++)
-    {
-      aux=0;
-      for(int k=0; k<n_epochs; k++) aux+= pref_epoch_1[j][k];
-      out << (double)pref_epoch_1[j][0]/(double)aux << "\t";
-    }
-    out << endl;
+//     out << "prebuscador " << m_version<<"local:  " << endl; 
+//     for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++)
+//     {
+//       for(int k=0; k<n_epochs; k++) out << pref_epoch_1[j][k] << "\t";
+//       out << endl;
+//     }
+//     
+//     out << "prebuscador " << m_version<<" right epoch local ratio: " << endl ;
+//     for(int j=0; j<RubyConfig::numberOfProcsPerChip(); j++)
+//     {
+//       aux=0;
+//       for(int k=0; k<n_epochs; k++) aux+= pref_epoch_1[j][k];
+//       out << (double)pref_epoch_1[j][0]/(double)aux << "\t";
+//     }
+//     out << endl;
     
     
    

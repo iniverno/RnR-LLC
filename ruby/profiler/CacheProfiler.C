@@ -289,14 +289,21 @@ void CacheProfiler::printStats2(ostream& out) const
 
   out << description << "_request_size: " << m_requestSize << endl;
 
-if(g_PREFETCHER)
+if(g_PREFETCHER || g_PREFETCHER_L1)
 {
-  out << "======================================" << endl << "PREFETCH STATS" << endl;
+  out << "======================================" << endl << "PREFETCH L3 STATS" << endl;
   for(int i=0; i<RubyConfig::numberOfL2CachePerChip(); i++)
     g_system_ptr->getPrefetcher(i)->printStats(out);
   out << endl;
 }  
   
+  if(g_PREFETCHER_L1)
+{
+  out << "======================================" << endl << "PREFETCH L15 STATS" << endl;
+  for(int i=0; i<RubyConfig::numberOfProcessors(); i++)
+    g_system_ptr->getPrefetcherL1(i)->printStats(out);
+  out << endl;
+}  
   out << "======================================" << endl<< "DRAM STATS" << endl;
   //para cada modulo de DRAM
   for(int i=0; i<RubyConfig::numberOfMemories(); i++)

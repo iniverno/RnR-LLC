@@ -101,10 +101,15 @@ public:
   ~System();
   
   //JORGE
-Prefetcher* getPrefetcher(int L2) const { 
+  Prefetcher* getPrefetcher(int L2) const { 
     //assert(procNumber < RubyConfig::numberOfL2Cache()); 
     return m_chip_vector[L2/RubyConfig::numberOfL2CachePerChip()]->getPrefetcher(L2%RubyConfig::numberOfL2CachePerChip());
   }
+  Prefetcher* getPrefetcherL1(int L1) const { 
+    //assert(procNumber < RubyConfig::numberOfL2Cache()); 
+    return m_chip_vector[0]->getPrefetcherL1(L1);
+  }
+  
   Dram* getDram(int dramNumber) const { 
     //assert(dramNumber < RubyConfig::numberOfProcessors()); 
 

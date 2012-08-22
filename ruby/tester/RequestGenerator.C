@@ -69,6 +69,7 @@
 #include "SyntheticDriver.h"
 #include "Chip.h"
 
+
 RequestGenerator::RequestGenerator(NodeID node, SyntheticDriver& driver) :
   m_driver(driver)
 {

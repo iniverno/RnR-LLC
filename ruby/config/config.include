@@ -259,6 +259,7 @@ PARAM( DIRECTORY_TRANSITIONS_PER_RUBY_CYCLE );
 
 //JORGE
 PARAM( g_PREFETCHER );
+PARAM( g_PREFETCHER_L1 );
 PARAM( g_PREFETCH_MECH );
 PARAM( g_PREFETCH_DEGREE );
 PARAM( g_INSTRUCTIONS_TO_SIMULATE );
@@ -350,6 +351,7 @@ PARAM_BOOL (g_INCLUSION_L2_L1);
 PARAM_BOOL (g_EXCLUSION_L3);
 PARAM_BOOL (g_INCLUSION_L3);
 
+PARAM (g_DEBUG_ONE_ADDRESS );
 
 // Maximum number of requests (including prefetches) outstanding from
 // the sequencer (Note: this also include items buffered in the store

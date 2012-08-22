@@ -85,6 +85,7 @@ Address setOffset(Address addr, int offset);
 Address makeLineAddress(Address addr);
 //JORGE
 int isPrefetcher();
+int isPrefetcherL1();
 int prefetchMechanism();
 int prefetchDegree();
 int mruInRepl();

@@ -73,6 +73,7 @@
 #include "Protocol.h"
 #include <string>
 
+
 static const int INFINITE_LATENCY = 10000; // Yes, this is a big hack
 static const int DEFAULT_BW_MULTIPLIER = 1;  // Just to be consistent with above :)
 
@@ -828,13 +829,12 @@ static NetDest shortest_path_to_node(SwitchID src, SwitchID next,
   }
 
   DEBUG_MSG(NETWORK_COMP, MedPrio, "returning shortest path");
-  DEBUG_EXPR(NETWORK_COMP, MedPrio, (src-(2*max_machines)));
-  DEBUG_EXPR(NETWORK_COMP, MedPrio, (next-(2*max_machines)));
-  DEBUG_EXPR(NETWORK_COMP, MedPrio, src);
-  DEBUG_EXPR(NETWORK_COMP, MedPrio, next);
-  DEBUG_EXPR(NETWORK_COMP, MedPrio, result);
+  //DEBUG_EXPR(NETWORK_COMP, MedPrio, (src-(2*max_machines)));
+  //DEBUG_EXPR(NETWORK_COMP, MedPrio, (next-(2*max_machines)));
+  //DEBUG_EXPR(NETWORK_COMP, MedPrio, src);
+  //DEBUG_EXPR(NETWORK_COMP, MedPrio, next);
+  //DEBUG_EXPR(NETWORK_COMP, MedPrio, result);
   DEBUG_NEWLINE(NETWORK_COMP, MedPrio);
 
   return result;
 }
-

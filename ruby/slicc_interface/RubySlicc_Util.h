@@ -249,6 +249,11 @@ extern inline int isPrefetcher()
   return g_PREFETCHER;
 }
 
+extern inline int isPrefetcherL1()
+{
+  return g_PREFETCHER_L1;
+}
+
 extern inline int prefetchMechanism()
 {
   return g_PREFETCH_MECH;

@@ -155,7 +155,6 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
     int uses, desc="";
     MachineID owner, desc="";
     bool NRU, desc="";
-    PrefetchBit prefetch, desc="bit prebuscado";
   }
 
   // TBE fields
@@ -336,12 +335,6 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
             trigger(Event:L1_Data_S, in_msg.Address);  // L1 now has data but must imediately move to S state
           } else if(in_msg.Type == CoherenceResponseType:DATA_I) {
             trigger(Event:L1_Data_I, in_msg.Address);  // L1 now has data but must imediately move to INV state
-          } else if(in_msg.Type == CoherenceResponseType:DATA_P) {
-          	if(L15cacheMemory.isTagPresent(in_msg.Address)) {
-            	trigger(Event:L1_Data, in_msg.Address);  // L1 now has data 
-            } else {
-            	responseIntraChipL1Network_in.dequeue();
-            }
           } else if(in_msg.Type == CoherenceResponseType:ACK) {
             trigger(Event:L1_PutAck, in_msg.Address);
           } else {
@@ -424,7 +417,6 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
 					  trigger(Event:L1_Replacement, L1IcacheMemory.cacheProbe(in_msg.Address, in_msg.ThreadID));
 					}
 			  } else {
-			  	prefetcher.stats2(4, machineID, 0);
 			  	trigger(Event:L15_Replacement, L15cacheMemory.cacheProbe(in_msg.Address, in_msg.ThreadID));
 			  }
 			  
@@ -488,17 +480,12 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
         if(L15cacheMemory.isTagPresent(in_msg.Address) != true && L1_TBEs.isPresent(in_msg.Address) != true && L1_PrefTBEs.isPresent(in_msg.Address) != true)   //present in L15 but no in L1D
         {
           if (L15cacheMemory.cacheAvail(in_msg.Address)) {
-          	prefetcher.stats2(0, in_msg.RequestorMachId,0);
 			trigger(Event:PrefetchS, in_msg.Address);
 			//trigger(Event:Load, in_msg.Address);
 		  } else {
-		  		prefetcher.stats2(4, in_msg.RequestorMachId,0);
 			  	trigger(Event:L15_Replacement, L15cacheMemory.cacheProbe(in_msg.Address, 0));
 		  }
-        } else {
-        	prefetchQueue_in.dequeue();
         }
-        
       }
     }
   }
@@ -1022,35 +1009,10 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
       if(isPrefetcherL1() == 1)
       {
           prefetcher.miss(address, address, 1, machineID, 0); //the second parameter should be the PC of the instruction but we are obviating it, instead, target address is used
-      }    
-  }
-  
-  action(j_recordPrefetch, "jrp", desc="write down this is a prefetch") {
-  	L15cacheMemory[address].prefetch := PrefetchBit:L1_HW;
-  }
-  
-  action(jjj_statsPrefetchLocalS, "jjj_pls", desc="preb UTIL de cada core") {
-      //Si el bloque es prebuscado y no ha sido usado
-      if(L15cacheMemory[address].prefetch==PrefetchBit:L1_HW)
-      {
-          prefetcher.stats2(1, machineID, 0	);
-      }    
-  }
-  
-  action(jjj_statsPrefetchLocalS2, "jjj_pls2", desc="preb INUTIL de cada core") {
-    if(L15cacheMemory[address].prefetch==PrefetchBit:L1_HW)
-    {
-      prefetcher.stats2(3, machineID, 0);
-    }
-  }
-
-  action(jab_firstUseToPrefetcherS, "jabs", desc="Marcamos como usado (y mandamos al prefetcher la direccion del fallo)") {
-      if(L15cacheMemory[address].prefetch==PrefetchBit:L1_HW)
-      {
-        L15cacheMemory[address].prefetch:=PrefetchBit:No;
-        prefetcher.miss(address, address, 1, machineID, 1);
       }
+    
   }
+  
   
   //*****************************************************
   // TRANSITIONS
@@ -1108,17 +1070,10 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
     uu_profileL15Miss;
     k_popMandatoryQueue;
   }
-  
-  transition({NP,L1_I, L1_S, L1_M}, L1_Data) {
-	o_popIncomingResponseQueue;
-  }
-  
 
   // Transitions from Shared
   transition({L1_S}, {Load}) {
     jjj_actualizaReuso;
-    jjj_statsPrefetchLocalS;
-    jab_firstUseToPrefetcherS;
     ooo_compruebaPresenciaL1D;
     
     h_load_hit;
@@ -1128,8 +1083,6 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
   // Transitions from Shared
   transition({L1_S}, {Ifetch}) {
     jjj_actualizaReuso;
-    jjj_statsPrefetchLocalS;
-    jab_firstUseToPrefetcherS;
     oop_compruebaPresenciaL1I;
     
     h_load_hit;
@@ -1139,8 +1092,6 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
   transition(L1_S, Store, L1_IM) {
     i_allocateTBE;
     jjj_actualizaReuso;
-    jjj_statsPrefetchLocalS;
-    jab_firstUseToPrefetcherS;
     ooo_compruebaPresenciaL1D;
     
     c_issueUPGRADE;
@@ -1148,26 +1099,23 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
   }
 
   transition(L1_S, {L1_Replacement,L1_WriteBack}) {
-	
+
     ff_deallocateL1CacheBlock;
   }
 
   transition(L1_S, L15_Replacement, L1_SI) {
     i_allocateTBE;
-    jjj_statsPrefetchLocalS2;
     q_issuePUTS;
     x_copyDataFromL1CacheToTBE;
     fff_deallocateL15CacheBlock;
   }
 
   transition(L1_S, L1_INV_S, L1_I) {
-  	jjj_statsPrefetchLocalS2;
     t_sendInvAckToL2Cache;
     l_popRequestQueue;
   }
    
    transition(L1_S, L1_INV_S_P, L1_I) {
-	jjj_statsPrefetchLocalS2;
     t_sendInvAckToL2Cache;
     jj_profilePrefInv;
     l_popRequestQueue;
@@ -1383,39 +1331,26 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
   transition(L1_IPS, L1_Data, L1_S) {
     //DB u_writeDataToL1Cache;
     s_deallocatePrefTBE;
-    j_recordPrefetch;
     o_popIncomingResponseQueue;
   }
 
   transition(L1_IPS, L1_Data_I, L1_I) {
     //DB u_writeDataToL1Cache;
-    jjj_statsPrefetchLocalS2;
     s_deallocatePrefTBE;
-    j_recordPrefetch;
     o_popIncomingResponseQueue;
   }
   
     // Transitions from L1_IS
-  transition(L1_IPS, L1_INV_S, L1_I) {
-    //t_sendInvAckToL2Cache;
-    jjj_statsPrefetchLocalS2;
-    s_deallocatePrefTBE;
+  transition(L1_IPS, L1_INV_S, L1_ISI) {
+    t_sendInvAckToL2Cache;
     l_popRequestQueue;
   }
   
-  transition(L1_IPS, L1_INV_S_P, L1_I) {
-    //t_sendInvAckToL2Cache;
-    jjj_statsPrefetchLocalS2;
-    s_deallocatePrefTBE;
+  transition(L1_IPS, L1_INV_S_P, L1_ISI) {
+    t_sendInvAckToL2Cache;
     l_popRequestQueue;
   }
   
-  transition(L1_IPS, L1_INV_P, L1_I) {
-  	jjj_statsPrefetchLocalS2;
-    s_deallocatePrefTBE;
-    l_popRequestQueue;
-  }
-
   transition({L1_IPS}, {Load, Ifetch, Store}, L1_IPSS) {
     a_issuePREFUPG;
   }
@@ -1423,15 +1358,12 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
   transition(L1_IPSS, L1_Data, L1_S) {
     //DB u_writeDataToL1Cache;
     s_deallocatePrefTBE;
-    j_recordPrefetch;
     o_popIncomingResponseQueue;
   }
 
   transition(L1_IPSS, L1_Data_I, L1_I) {
     //DB u_writeDataToL1Cache;
-    jjj_statsPrefetchLocalS2;
     s_deallocatePrefTBE;
-    j_recordPrefetch;
     o_popIncomingResponseQueue;
   }
   
@@ -1441,11 +1373,6 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
     l_popRequestQueue;
   }
  
-   transition(L1_IPSS, L1_INV_P, L1_I) {
-    jjj_statsPrefetchLocalS2;
-    s_deallocatePrefTBE;
-    l_popRequestQueue;
-  }
 
 }
 

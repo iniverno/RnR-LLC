@@ -70,13 +70,18 @@ bool Dram::isPresentMSHR(Address addr, int tipo)
   
 void Dram::insertMSHR(Address addr, int tipo, MachineID node)
 {
+	assert(!isPresentMSHR(addr, (tipo ? 1 : 3)));
+	
   int tMSHR=(tipo == 3 ||tipo == 4)? 0:1;
-   assert(!isPresentMSHR(addr, tipo));
+   
    assert(isAbleMSHR(tMSHR));
    
    if(DEBUG_DRAM  &&  !g_CARGA_CACHE) cout << "petici—n insertada en el MSHR " <<  tipo << " " << addr << endl;
-        
    
+   //cerr << this << endl;
+   DEBUG_SLICC( MedPrio, "petici—n insertada en el MSHR (address):", addr ); 
+   DEBUG_SLICC( MedPrio, "petici—n insertada en el MSHR (tipo):", tMSHR ); 
+   DEBUG_SLICC( MedPrio, "petici—n insertada en el MSHR (getBank(addr);):", tMSHR ); getBank(addr);
    dramRequest request;
    
     request.channel=map_Address_to_DirectoryNode(addr);
@@ -99,8 +104,11 @@ void Dram::insertMSHR(Address addr, int tipo, MachineID node)
 void Dram::removeMSHR(Address addr, int tipo)
 { 
 
-  assert(isPresentMSHR(addr, tipo));
+  assert(isPresentMSHR(addr, (tipo ? 1 : 3)));
 
+   DEBUG_SLICC( MedPrio, "petici—n eliminada en el MSHR (address):", addr ); 
+   DEBUG_SLICC( MedPrio, "petici—n eliminada en el MSHR (tipo):", tipo ); 
+	
 
     for(it2=(tipo ? demandMSHR : prefMSHR).begin(); it2!=(tipo ? demandMSHR : prefMSHR).end(); ++it2)
     {
@@ -110,7 +118,8 @@ void Dram::removeMSHR(Address addr, int tipo)
 
 dramRequest Dram::getMSHREntry(Address addr, int tipo)
 {
-  assert(isPresentMSHR(addr, tipo));
+    assert(isPresentMSHR(addr, (tipo ? 1 : 3)));
+  
     for(it2=(tipo ? demandMSHR : prefMSHR).begin(); it2!=(tipo ? demandMSHR : prefMSHR).end(); it2++)
     {
       if((*it2).addr == addr ) return *it2; 
@@ -131,8 +140,8 @@ bool Dram::isMSHRReady(int tipo)
     
     //MSHR
   
-    demandMSHRSizeCt=32;
-    prefMSHRSizeCt=32;
+    demandMSHRSizeCt=512;
+    prefMSHRSizeCt=512;
     lastL2BankServed=0;
     
     
@@ -359,6 +368,7 @@ return binstr;
        
         if(DEBUG_DRAM  &&  !g_CARGA_CACHE) cout << "petici—n lista: " <<  request.addr << endl;
         
+        DEBUG_SLICC( MedPrio, "DramWakeup (address):", request.addr );
         DEBUG_SLICC(MedPrio, "DramWakeup (sent message): ", out_msg);
         DEBUG_SLICC(MedPrio, "DramWakeup (L2 destination): ", map_Address_to_L2Node(request.addr));
         
@@ -563,8 +573,9 @@ void Dram::upgrade(Address addr)
       {
         dramRequest request=*it;
         it=banks[bankMem].prefetchQueue.erase(it);
-        banks[bankMem].demandQueue.push_back(request);
+        banks[bankMem].demandQueue.push_front(request);
         DEBUG_SLICC(MedPrio, "DramUpgrade: Prefetch found in prefetchQueue and now upgraded in Bank ", bankMem);
+        DEBUG_SLICC(MedPrio, "DramUpgrade: Prefetch found in prefetchQueue with address ", addr);
         return;
       }
     }
@@ -574,17 +585,34 @@ void Dram::upgrade(Address addr)
 //MSHR
   
   int bankL2=map_Address_to_L2Node(addr);
+  DEBUG_SLICC(MedPrio, "DramUpgrade: Prefetch is searched in bank ", bankL2);
   
-  if(ptrDram[bankL2]->isPresentMSHR(addr,0)) 
+  
+  if(ptrDram[bankL2]->isPresentMSHR(addr,3)) 
   { 
     dramRequest r= ptrDram[bankL2]->getMSHREntry(addr,0);
     
     ptrDram[bankL2]->removeMSHR(addr,0);
 
     ptrDram[bankL2]->insertMSHR(addr,1, r.core);
+  } else {
+  	DEBUG_SLICC(MedPrio, "DramUpgrade: Prefetch not found in the correct bank", addr);
   }
+  
+  
+  bankL2= 0; //IMPORTANT!!! only right if ONE DRAM channel
+  
+  if(ptrDram[bankL2]->isPresentMSHR(addr,3)) 
+  { 
+    dramRequest r= ptrDram[bankL2]->getMSHREntry(addr,0);
+    
+    ptrDram[bankL2]->removeMSHR(addr,0);
 
-  DEBUG_SLICC(MedPrio, "DramUpgrade: Prefetch not found", 0);
+    ptrDram[bankL2]->insertMSHR(addr,1, r.core);
+  } else {
+  	DEBUG_SLICC(MedPrio, "DramUpgrade: Prefetch not found in the bank 0", addr);
+  }
+  
 }
 
 bool Dram::i_isAble(Address addr, int tipo)
@@ -619,13 +647,11 @@ bool Dram::isAble(Address addr, int tipo)
 
 void Dram::i_request(Address addr, int tipo, MachineID node, MachineID core)
 { 
-  if(DEBUG_DRAM  &&  !g_CARGA_CACHE)
-  {
-    cerr << "i_request (addr):" << addr<< endl;
-    cerr << "i_request (tipo):" << tipo<< endl;
-    cerr << "i_request (node):" << node<< endl;
-    cerr << "i_request (core):" << core<< endl;
-  }
+    DEBUG_SLICC( MedPrio, "i_request (addr):" , addr );
+    DEBUG_SLICC( MedPrio, "i_request (tipo):", tipo );
+    DEBUG_SLICC( MedPrio, "i_request (node):", node);
+    DEBUG_SLICC( MedPrio, "i_request (core):", core);
+  
   insertMSHR(addr, tipo, core);
   
   g_eventQueue_ptr->scheduleEvent(this, 1);
@@ -665,14 +691,6 @@ void Dram::request(Address addr, int tipo, MachineID node, MachineID core)
     
     request.queueTime=now-1;  //for stats
     
-    if(addr.getAddress()==0x392afd080)
-    {
-      cout << addr <<endl;
-      cout << tipo << endl;
-      cout << node << " " << core << endl;
-      cout << bank << endl;
-      cout << now << endl;
-    }
     
     DEBUG_SLICC(MedPrio, "DramRequest (addr): ", addr);
     DEBUG_SLICC(MedPrio, "DramRequest (tipo): ", tipo);

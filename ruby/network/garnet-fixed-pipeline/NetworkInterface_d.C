@@ -212,9 +212,9 @@ int NetworkInterface_d::calculateVC(int vnet)
 
 void NetworkInterface_d::wakeup()
 {
-	DEBUG_EXPR(NETWORK_COMP, MedPrio, m_id);	
+	//DEBUG_EXPR(NETWORK_COMP, MedPrio, m_id);	
 	DEBUG_MSG(NETWORK_COMP, MedPrio, "NI WOKE UP");	
-	DEBUG_EXPR(NETWORK_COMP, MedPrio, g_eventQueue_ptr->getTime());	
+	//DEBUG_EXPR(NETWORK_COMP, MedPrio, g_eventQueue_ptr->getTime());	
 
 	MsgPtr msg_ptr;
 

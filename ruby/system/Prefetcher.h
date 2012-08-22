@@ -304,7 +304,7 @@ private:
   
   int m_adapt;
   
-  MachineID m_requestor;  //guarda quŽ m‡quina provoc— el fallo
+  MachineID m_requestor;  //guarda quÂŽ mÂ‡quina provocÂ— el fallo
 
 #define BITS_SECTOR RubyConfig::dataBlockBits() + RubyConfig::L2CacheBits() + RubyConfig::L2CacheSetsBits()
    long int numOfHits, m_misses, m_misses_1[NPROC], m_misses_sector[NPROC],  m_firstUses[NPROC];
@@ -347,7 +347,7 @@ private:
    Histogram lats_pref;
    Histogram lats_gral;
    int m_proc_miss; //proc que ha fallado
-   int m_proc_cambia;  //proc que cambiar‡ en esta Žpoca
+   int m_proc_cambia;  //proc que cambiarÂ‡ en esta ÂŽpoca
    int min_owner;
    double utilidad_epoch_1[NPROC];
    double utilidad_epoch[NPROC];
@@ -373,7 +373,7 @@ private:
   long int cadenas_valor[NPROC][11];
   long int cadenas_nelems[NPROC][11];
   
-  //mecanismo din‡mico de elecci—n de prebuscador
+  //mecanismo dinÂ‡mico de elecciÂ—n de prebuscador
    int m_alterna;
    int m_test;
    int m_etapa_actual;
@@ -398,7 +398,7 @@ private:
    void applyDegChange2(); 
    void applyDegChange(int j);
    
-   //para las estad’sticas de latencia de servicio
+   //para las estadÂ’sticas de latencia de servicio
    Map<Address, nodoLat> m_map;
    
    //PDCFM
@@ -411,7 +411,7 @@ private:
    int PDegree[NPROC];
    int PBaseDegree[NPROC];
    int m_flag_cabeza;
-   MachineID m_node; //core que hace la petici—n
+   MachineID m_node; //core que hace la peticiÂ—n
    
    PDFCM_HT_entry * PDFCM_HT; 	
    PDFCM_DT_entry * PDFCM_DT; 	
@@ -437,7 +437,7 @@ private:
   
   long m_ext_harmful_prefetches;
   
-  // array de contadores para la clasificaci—n de las prebœsquedas
+  // array de contadores para la clasificaciÂ—n de las prebÂœsquedas
   Vector <uint64> cont;
   Vector <uint64> utiles;
   Vector <uint64> inutiles;
@@ -463,7 +463,7 @@ private:
 
   
   Bufcir buffer;
-  nodo port;  //petici—n que est‡ en el puerto del banco de la L2 (para que la busqueda en la funci—n
+  nodo port;  //peticiÂ—n que estÂ‡ en el puerto del banco de la L2 (para que la busqueda en la funciÂ—n
               //"esta" sea completa
   bool vacio;
   int m_tipo;
@@ -472,7 +472,7 @@ private:
   PCTableEntry* PCTable;
   uint getPCDegree(Address pc);
   
-
+  bool prefAtPrivateCache;
   
 };
 

@@ -73,6 +73,8 @@
 #include "DeterministicDriver.h"
 #include "Chip.h"
 
+
+
 DetermInvGenerator::DetermInvGenerator(NodeID node, DeterministicDriver& driver) :
   m_driver(driver)
 {
@@ -92,8 +94,8 @@ DetermInvGenerator::~DetermInvGenerator()
 
 void DetermInvGenerator::wakeup()
 {
-  DEBUG_EXPR(TESTER_COMP, MedPrio, m_node);
-  DEBUG_EXPR(TESTER_COMP, MedPrio, m_status);
+  //DEBUG_EXPR(TESTER_COMP, MedPrio, m_node);
+  //DEBUG_EXPR(TESTER_COMP, MedPrio, m_status);
 
   // determine if this node is next for the load round robin request
   if (m_status == DetermInvGeneratorStatus_Thinking) {
@@ -132,10 +134,10 @@ void DetermInvGenerator::performCallback(NodeID proc, SubBlock& data)
   assert(proc == m_node);
   assert(address == m_address);  
 
-  DEBUG_EXPR(TESTER_COMP, LowPrio, proc);
-  DEBUG_EXPR(TESTER_COMP, LowPrio, m_status);
-  DEBUG_EXPR(TESTER_COMP, LowPrio, address);
-  DEBUG_EXPR(TESTER_COMP, LowPrio, data);
+  //DEBUG_EXPR(TESTER_COMP, LowPrio, proc);
+  //DEBUG_EXPR(TESTER_COMP, LowPrio, m_status);
+  //DEBUG_EXPR(TESTER_COMP, LowPrio, address);
+  //DEBUG_EXPR(TESTER_COMP, LowPrio, data);
 
   if (m_status == DetermInvGeneratorStatus_Load_Pending) { 
     m_driver.recordLoadLatency(g_eventQueue_ptr->getTime() - m_last_transition);
@@ -176,10 +178,10 @@ void DetermInvGenerator::performCallback(NodeID proc, SubBlock& data)
     ERROR_MSG("Invalid status");
   }
 
-  DEBUG_EXPR(TESTER_COMP, LowPrio, proc);
-  DEBUG_EXPR(TESTER_COMP, LowPrio, m_status);
-  DEBUG_EXPR(TESTER_COMP, LowPrio, address);
-  DEBUG_EXPR(TESTER_COMP, LowPrio, data);
+  //DEBUG_EXPR(TESTER_COMP, LowPrio, proc);
+  //DEBUG_EXPR(TESTER_COMP, LowPrio, m_status);
+  //DEBUG_EXPR(TESTER_COMP, LowPrio, address);
+  //DEBUG_EXPR(TESTER_COMP, LowPrio, data);
 
 }
 
@@ -227,3 +229,4 @@ void DetermInvGenerator::print(ostream& out) const
   out << "[DetermInvGenerator]" << endl;
 }
 
+#

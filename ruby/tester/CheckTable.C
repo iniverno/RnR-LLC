@@ -63,6 +63,7 @@
 #include "Check.h"
 #include "Map.h"
 
+
 CheckTable::CheckTable()
 {
   m_lookup_map_ptr = new Map<Address, Check*>;
@@ -153,3 +154,4 @@ Check* CheckTable::getCheck(const Address& address)
 void CheckTable::print(ostream& out) const
 {
 }
+

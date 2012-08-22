@@ -63,6 +63,7 @@
 #include "flitBuffer.h"	
 #include "NetworkMessage.h"
 
+
 NetworkInterface::NetworkInterface(int id, int virtual_networks, GarnetNetwork *network_ptr)
 {
 	m_id = id;	
@@ -259,9 +260,9 @@ void NetworkInterface::wakeup()
 		flit *t_flit = inNetLink->consumeLink();
 		if(t_flit->get_type() == TAIL_ || t_flit->get_type() == HEAD_TAIL_)
 		{
-			DEBUG_EXPR(NETWORK_COMP, HighPrio, m_id);	
+			//DEBUG_EXPR(NETWORK_COMP, HighPrio, m_id);	
 			DEBUG_MSG(NETWORK_COMP, HighPrio, "Message got delivered");
-			DEBUG_EXPR(NETWORK_COMP, HighPrio, g_eventQueue_ptr->getTime());	
+			//DEBUG_EXPR(NETWORK_COMP, HighPrio, g_eventQueue_ptr->getTime());	
 			if(!NetworkConfig::isNetworkTesting()) // When we are doing network only testing, the messages do not have to be buffered into the message buffers
 			{
 				outNode_ptr[t_flit->get_vnet()]->enqueue(t_flit->get_msg_ptr(), 1); // enqueueing for protocol buffer. This is not required when doing network only testing
@@ -330,3 +331,4 @@ void NetworkInterface::print(ostream& out) const
 {
 	out << "[Network Interface]";
 }
+

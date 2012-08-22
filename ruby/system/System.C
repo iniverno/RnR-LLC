@@ -283,6 +283,3 @@ void System::checkGlobalCoherenceInvariant(const Address& addr  )  {
 }
 #endif
 
-
-
-

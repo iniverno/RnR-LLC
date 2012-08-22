@@ -307,3 +307,4 @@ void DeterministicDriver::printStats(ostream& out) const
 void DeterministicDriver::print(ostream& out) const
 {
 }
+

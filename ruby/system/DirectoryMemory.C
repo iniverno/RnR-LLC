@@ -146,10 +146,10 @@ bool DirectoryMemory::isPresent(PhysAddress address)
   return (map_Address_to_DirectoryNode(address) == m_chip_ptr->getID()*RubyConfig::numberOfDirectoryPerChip()+m_version);
 }
 
-Directory_Entry& DirectoryMemory::lookup(PhysAddress address)
+Directory_Entry& DirectoryMemory::lookup(PhysAddress addr)
 {
-  assert(isPresent(address));
-  Index index = address.memoryModuleIndex();
+  assert(isPresent(addr));
+  Index index = addr.memoryModuleIndex();
 
   int parte= index >> (g_MEMORY_MODULE_BITS - logpartes);
   index %= m_size;
@@ -163,7 +163,7 @@ Directory_Entry& DirectoryMemory::lookup(PhysAddress address)
   //if(parte!=0) 
   if (index < 0 || index > m_size ) {
     WARN_EXPR(m_chip_ptr->getID()); 
-    WARN_EXPR(address.getAddress());
+    WARN_EXPR(addr.getAddress());
     WARN_EXPR(index);
     WARN_EXPR(m_size);
     WARN_EXPR(parte);
@@ -192,7 +192,7 @@ Directory_Entry& DirectoryMemory::lookup(PhysAddress address)
     // load the data from SimICS when first initalizing
     if (g_SIMICS) {
       if (DATA_BLOCK) {
-        physical_address_t physAddr = address.getAddress();
+        physical_address_t physAddr = addr.getAddress();
         
         for(int j=0; j < RubyConfig::dataBlockBytes(); j++) {
         
