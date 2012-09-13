@@ -98,6 +98,8 @@ CacheProfiler::CacheProfiler(string description)
   m_accesos_super.setSize(RubyConfig::numberOfProcessors());
   m_misses_super.setSize(RubyConfig::numberOfProcessors());
   m_misses_user.setSize(RubyConfig::numberOfProcessors());
+  m_dataMisses_super.setSize(RubyConfig::numberOfProcessors());
+  m_dataMisses_user.setSize(RubyConfig::numberOfProcessors());
   
   //m_total_accesos= new vector <int64>; 
   m_total_accesos.setSize(RubyConfig::numberOfProcessors());
@@ -132,10 +134,13 @@ CacheProfiler::CacheProfiler(string description)
   m_l2_misses_ratio.setSize(RubyConfig::numberOfProcessors());
   m_misses_user.setSize(RubyConfig::numberOfProcessors());
   m_misses_super.setSize(RubyConfig::numberOfProcessors());
+  m_dataMisses_user.setSize(RubyConfig::numberOfProcessors());
+  m_dataMisses_super.setSize(RubyConfig::numberOfProcessors());
   m_miss_user_ratio.setSize(RubyConfig::numberOfProcessors());
    m_miss_super_ratio.setSize(RubyConfig::numberOfProcessors());
   
  m_misses.setSize(RubyConfig::numberOfProcessors());
+ m_dataMisses.setSize(RubyConfig::numberOfProcessors());
 
    m_l2_misses_user.setSize(RubyConfig::numberOfProcessors());
    m_l2_misses_super.setSize(RubyConfig::numberOfProcessors());
@@ -174,6 +179,7 @@ void CacheProfiler::printStats(ostream& out) const
   out << description << "_total_accesos_super_ratio: " << m_accesos_super_ratio << endl;
 
   out << description << "_total_misses: " << m_misses << endl;
+  out << description << "_total_dataMisses: " << m_dataMisses << endl;
   //calcula_ratios();
   out << description << "_total_miss_ratio: " << m_misses_ratio << endl;
   out << description << "_total_demand_misses: " << m_demand_misses << endl;
@@ -284,7 +290,9 @@ void CacheProfiler::printStats2(ostream& out) const
 //out << description << "_miss_ratio_" << (AccessModeType) 0 << ":   " << (100.0 * m_accessModeTypeHistogram[0]) / m_l2_accesos_super << "%" << endl;  
 //  out << description << "_miss_ratio_" << (AccessModeType) 1 << ":   " << (100.0 * m_accessModeTypeHistogram[1]) / m_l2_accesos_user << "%" << endl;
    out << description << "_miss_ratio_" << (AccessModeType) 0 << "2:   " << m_l2_miss_super_ratio << "%" << endl;  
-  out << description << "_miss_ratio_" << (AccessModeType) 1 << "2:   " << m_l2_miss_user_ratio << "%" << endl;  
+  out << description << "_miss_ratio_" << (AccessModeType) 1 << "2:   " << m_l2_miss_user_ratio << "%" << endl;
+  out << description << "_number_of_misses_total" <<  m_misses << endl;
+  out << description << "_number_of_dataMisses_total" <<  m_dataMisses << endl;
 
 
   out << description << "_request_size: " << m_requestSize << endl;
@@ -376,6 +384,7 @@ for(int i=0; i<RubyConfig::numberOfProcessors(); i++)
  misses_per_instruction[i]=0;
  
  m_misses[i] = 0;
+ m_dataMisses[i] = 0;
  
   m_demand_misses[i] = 0;
  
@@ -411,6 +420,9 @@ m_pref_inv[i]=0;
 m_misses_super[i]=0;
 m_misses_user[i]=0;
 
+m_dataMisses_super[i]=0;
+m_dataMisses_user[i]=0;
+
 m_l15_misses_super[i]=0;
 m_l15_misses_user[i]=0;
 
@@ -433,14 +445,16 @@ for(int i=0; i<RubyConfig::numberOfL2CachePerChip(); i++)
   }
 }
 
-void CacheProfiler::addStatSample(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id)
+void CacheProfiler::addStatSample(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id, bool dataMiss)
 {
   m_misses[id]++;
+  if(dataMiss) m_dataMisses[id]++;
   
   if(type==AccessModeType_SupervisorMode)
     m_misses_super[id]++;
   else if(type==AccessModeType_UserMode)
     m_misses_user[id]++;
+
     
   m_requestTypeVec_ptr->ref(requestType)++;
 
@@ -454,7 +468,14 @@ void CacheProfiler::addStatSample(GenericRequestType requestType, AccessModeType
   } else { // must be L1_HW || L2_HW prefetch
     m_prefetches[id]++;
     m_hw_prefetches[id]++;
-  } 
+  }
+  if(dataMiss)
+  {
+	  if(type==AccessModeType_SupervisorMode)
+		  m_dataMisses_super[id]++;
+	  else if(type==AccessModeType_UserMode)
+		  m_dataMisses_user[id]++;
+  }
 }
 
 //******************************************************

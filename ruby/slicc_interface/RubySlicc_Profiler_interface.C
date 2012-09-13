@@ -152,6 +152,11 @@ void profile_L2Cache_miss(GenericRequestType requestType, AccessModeType type, i
   g_system_ptr->getProfiler()->addSecondaryStatSample(requestType, type, msgSize, pfBit, nodeID);
 }
 
+void profile_L2Cache_dataMiss(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID nodeID)
+{
+  g_system_ptr->getProfiler()->addL2dataMissStatSample(requestType, type, msgSize, pfBit, nodeID);
+}
+
 void profile_L3Cache_miss(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID nodeID)
 {
   g_system_ptr->getProfiler()->addSecondaryStatSample(requestType, type, msgSize, pfBit, nodeID);

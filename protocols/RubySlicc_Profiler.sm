@@ -67,6 +67,7 @@ void profile_L1Cache_miss(CacheMsg msg, NodeID l1cacheID);
 // used by CMP protocols
 void profile_L15Cache_miss(CacheMsg requestType, NodeID l15cacheID);
 void profile_L2Cache_miss(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID l2cacheID);
+void profile_L2Cache_dataMiss(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID l2cacheID);
 void profile_L3Cache_miss(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID l2cacheID);
 void profile_accessL3(AccessModeType type, NodeID proc);
 void profile_request(string L1CacheStateStr, string L2CacheStateStr, string directoryStateStr, string requestTypeStr);

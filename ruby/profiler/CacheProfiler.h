@@ -89,7 +89,7 @@ public:
   void printStats2(ostream& out) const;
   void clearStats();
 
-  void addStatSample(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id);
+  void addStatSample(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id, bool dataMiss = false);
 //JORGE
   int64 getAccesos();
   void addAcceso(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id, bool cache15 = false);
@@ -115,6 +115,7 @@ private:
   string m_description;
   Histogram m_requestSize;
   Vector <int64> m_misses;
+  Vector <int64> m_dataMisses;
   Vector <double> m_misses_ratio;
   Vector <double> misses_per_instruction;
   Vector <int64>  m_demand_misses;
@@ -127,6 +128,8 @@ private:
   Vector <int64>  m_accesos_super;
   Vector <int64>  m_misses_user;
   Vector <int64>  m_misses_super;
+  Vector <int64>  m_dataMisses_user;
+  Vector <int64>  m_dataMisses_super;
   Vector <int64>  m_l15_misses_user;
   Vector <int64>  m_l15_misses_super;
   Vector <int64>  m_l2_misses_user;

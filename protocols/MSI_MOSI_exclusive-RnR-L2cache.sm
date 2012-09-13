@@ -149,12 +149,12 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     L2_OMV, desc="L2 owned and valid L1 copies, issued GETX and invalidates, have not seen responses yet";
     L2_OM, desc="L2 owned and no valid L1 copies, issued GETX, have not seen response yet";
     
-    L2_SM, desc="Desde S habiendo recibido una prebœsqueda en escritura";
+    L2_SM, desc="Desde S habiendo recibido una prebï¿½squeda en escritura";
     L2_SSM, desc="Desde SS habiendo recibido una preb en escritura";
     L2_SSMV, desc="Desde SS habiendo recibido una preb en escritura";
     
     L2_IPI, desc="Desde SS habiendo recibido una preb en escritura";
-    L2_IPSS, desc="Desde L2_IPS habiendo recibido una petici—n de L1";
+    L2_IPSS, desc="Desde L2_IPS habiendo recibido una peticiï¿½n de L1";
     
     L2_INRM, desc="";
     L2_INRMZ, desc="";
@@ -170,6 +170,8 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     L2_NRS, desc="";
     L2_NRSS, desc="";
     L2_NRMT, desc="";
+    
+    L2_SS_IS, desc="";
   }
 
   // EVENTS
@@ -190,9 +192,9 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     L1_PUTS_old,             desc="an old L1 replacement of a shared block", format="!r";
 
 
-	PrefetchS, desc="Una prebœsqueda de lectura";
+	PrefetchS, desc="Una prebï¿½squeda de lectura";
     
-    PrefetchX, desc="Una prebœsqueda de escritura";
+    PrefetchX, desc="Una prebï¿½squeda de escritura";
     
     // events of local L1 responses
     Proc_int_ack, "Proc on-chip L1 Cache ack", desc="Ack from on-chip L1 Cache";
@@ -250,7 +252,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     bool reused, desc="marcamos si el bloque ha sido usado o no";
     bool reused2, desc="marcamos si el bloque ha sido usado o no";
     bool reused3, desc="marcamos si el bloque ha sido usado o no";
-    bool prefDWG, desc="marca si nos degradado una prebœsqueda externa";
+    bool prefDWG, desc="marca si nos degradado una prebï¿½squeda externa";
     State PrevLocalCacheState,          desc="previous local cache state";
     State PrevRemoteCacheState,          desc="previous remote cache state";
     MachineID prevOwner,				desc="previous owner";
@@ -1130,15 +1132,15 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     //prefetcher.statsLat(1, address);
   }
   
-  action(ji_marcaRepl, "ji", desc="marca en el bloque de cache  que no nos expuls— una prebusqueda") {
+  action(ji_marcaRepl, "ji", desc="marca en el bloque de cache  que no nos expulsï¿½ una prebusqueda") {
     L2cacheMemory[address].prefTypeRepl:= 0;
   }
-   action(jis_marcaRepl, "jis", desc="marca en el bloque de cache  que nos expuls— una preb en lectura") {
+   action(jis_marcaRepl, "jis", desc="marca en el bloque de cache  que nos expulsï¿½ una preb en lectura") {
     L2cacheMemory[address].prefTypeRepl:= 1;
     //prefetcher.bloom(1, address);
   }
 
-  action(jix_marcaRepl, "jix", desc="marca en el bloque de cache  que nos expuls— una preb en escritura") {
+  action(jix_marcaRepl, "jix", desc="marca en el bloque de cache  que nos expulsï¿½ una preb en escritura") {
     L2cacheMemory[address].prefTypeRepl:= 2;
   }
 
@@ -1216,9 +1218,9 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   }
 
   action(r_decrementNumberOfPendingIntAcks, "r", desc="Decrement number of pending int invalidations by one") {
-    DEBUG_EXPR(L2_TBEs[address].NumPendingExtAcks);
+    DEBUG_EXPR(L2_TBEs[address].NumPendingIntAcks);
     L2_TBEs[address].NumPendingIntAcks := L2_TBEs[address].NumPendingIntAcks - 1;
-    DEBUG_EXPR(L2_TBEs[address].NumPendingExtAcks);
+    DEBUG_EXPR(L2_TBEs[address].NumPendingIntAcks);
   }
   
   action(r_decrementNumberOfPendingIntAcksPrefTBE, "rp", desc="Decrement number of pending int invalidations by one") {
@@ -1226,6 +1228,13 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     Pref_TBEs[address].NumPendingIntAcks := Pref_TBEs[address].NumPendingIntAcks - 1;
     DEBUG_EXPR(Pref_TBEs[address].NumPendingExtAcks);
   }
+  
+  action(r_incrementNumberOfPendingIntAcks, "ri", desc="Increment number of pending int invalidations by one") {
+    DEBUG_EXPR(L2_TBEs[address].NumPendingIntAcks);
+    L2_TBEs[address].NumPendingIntAcks := L2_TBEs[address].NumPendingIntAcks + 1;
+    DEBUG_EXPR(L2_TBEs[address].NumPendingIntAcks);
+  }
+  
 
   action(t_sendAckToInvalidator, "t", desc="Send ack to invalidator") {
     peek(forwardedRequestIntraChipL2Network_in, RequestMsg) {
@@ -1510,7 +1519,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     //}    
   }
 
-  action(jaa_missToPrefetch, "jaa", desc="mandamos al prefetcher la direcci—n del fallo") {
+  action(jaa_missToPrefetch, "jaa", desc="mandamos al prefetcher la direcciï¿½n del fallo") {
     peek(L1RequestIntraChipL2Network_in, RequestMsg) {
       if(isPrefetcher() == 1)
       {
@@ -1528,7 +1537,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   }
 
 //#########################
-  action(jab_firstUseToPrefetcherS, "jabs", desc="Marcamos como usado (y mandamos al prefetcher la direcci—n del fallo)") {
+  action(jab_firstUseToPrefetcherS, "jabs", desc="Marcamos como usado (y mandamos al prefetcher la direcciï¿½n del fallo)") {
     peek(L1RequestIntraChipL2Network_in, RequestMsg) {
       if(isPrefetcher() == 1 && L2cacheMemory[address].prefetch==PrefetchBit:L2_HW)
       {
@@ -1546,7 +1555,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     }
   }
   
-  action(jab_firstUseToPrefetcherX, "jabx", desc="Marcamos como usado (y mandamos al prefetcher la direcci—n del fallo)") {
+  action(jab_firstUseToPrefetcherX, "jabx", desc="Marcamos como usado (y mandamos al prefetcher la direcciï¿½n del fallo)") {
     peek(L1RequestIntraChipL2Network_in, RequestMsg) {
       if(isPrefetcher() == 1 &&  L2cacheMemory[address].prefetch==PrefetchBit:L2_HW)
       {
@@ -1745,7 +1754,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   }
 
   
-  action(jjj_noteDWG, "jjj_nd", desc="anotamos que hemos hecho Downgrade por una prebœsqueda externa") {
+  action(jjj_noteDWG, "jjj_nd", desc="anotamos que hemos hecho Downgrade por una prebï¿½squeda externa") {
    peek(forwardedRequestIntraChipL2Network_in, RequestMsg) {
       L2cacheMemory[address].prefDWG:=true;
       }
@@ -1942,6 +1951,35 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   action(pt_printTemp, "pt", desc="control of block life") {
   	L2cacheMemory.printTemp(address);
   }
+  
+//excl 
+  action(y_dataFromTBEToL1, "yl", desc="Send data from TBE to L1") {
+      enqueue(responseIntraChipL2Network_out, ResponseMsg, latency="L2_RESPONSE_LATENCY") {
+        out_msg.Address := address;
+        out_msg.Type := CoherenceResponseType:DATA;
+        out_msg.SenderMachId := machineID;
+        out_msg.Destination := L2_TBEs[address].L1_GetS_IDs;
+        out_msg.DataBlk := L2_TBEs[address].DataBlk;
+        DEBUG_EXPR(out_msg.Address);
+        DEBUG_EXPR(out_msg.Destination);
+        DEBUG_EXPR(out_msg.DataBlk);
+        DEBUG_EXPR(out_msg.NumPendingExtAcks);
+        out_msg.MessageSize := MessageSizeType:Data;
+      }
+  }
+  
+  action(jc_issueC2CSmallestL1copyRequest, "jc", desc="Issue cache to cache") {
+    peek(L1RequestIntraChipL2Network_in, RequestMsg) {
+      enqueue(L1RequestIntraChipL2Network_out, RequestMsg, latency="L2_REQUEST_LATENCY") {
+        out_msg.Address := address;
+        out_msg.Type := CoherenceRequestType:L1_C2C;
+        out_msg.RequestorMachId := in_msg.RequestorMachId;
+        out_msg.Destination.add(L2cacheMemory[address].Sharers.smallestElement(MachineType:L1Cache));
+        out_msg.MessageSize := MessageSizeType:Control;
+      }
+    }
+  }
+  
 
   //*****************************************************
   // TRANSITIONS
@@ -1964,7 +2002,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
                 L2_SIV, L2_PSIV, L2_SIC, 
                 L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
                 L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
-                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS}, 
+                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS, L2_SS_IS}, 
   {L2_Replacement, L2_PrefetchS_Replacement, L2_PrefetchX_Replacement}) {
     //xr_recycleResponse;
     x_recycleRequest;
@@ -1974,7 +2012,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
                 L2_SIV, L2_PSIV, L2_SIC, 
                 L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
                 L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
-                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS}, 
+                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS, L2_SS_IS}, 
   {L1_PUTX, L1_PUTX_last, L1_PUTS, L1_PUTS_last, L1_PUTX_old, L1_PUTS_old}) {
     x_recycleRequest;
   }
@@ -1983,7 +2021,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
                 L2_SIV, L2_PSIV, L2_SIC, 
                 L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
                 L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
-                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS}, 
+                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS, L2_SS_IS}, 
   {Data_replacement}) {
     xd_recycleDataRepl;
   }
@@ -2066,7 +2104,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   }
 
   transition(L2_IS, Data_ext_ack_0, L2_SS) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     h_issueLoadHit;
     //c_finalAckToDirIfNeeded;
     s_deallocateTBE;
@@ -2077,7 +2115,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
     
     ww_profileMissNoDir;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     nn_addSharer;
     setTimeLast;
     ss_recordGetSL1ID;
@@ -2098,7 +2136,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   // or, could get data from Dir, if my GETS took forever to get to Dir, and the GETX
   // processor already wrote it back
   transition(L2_ISI, Data_ext_ack_0, L2_I) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     oo_issueLoadHitInv;
     //c_finalAckToDirIfNeeded;
     s_deallocateTBE;
@@ -2135,13 +2173,13 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   }  
 
   transition(L2_IMV, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MV) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     //c_finalAckToDirIfNeeded;
     jjj_popResponeDramQueue;
   }
 
   transition(L2_IMV, Data_ext_ack_not_0) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     p_addNumberOfPendingExtAcks;
     mm_rememberIfFinalAckNeeded;
     jjj_popResponeDramQueue;
@@ -2207,7 +2245,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   transition(L2_IM, {L1_GETS,L1_GET_INSTR}, L2_IMO) {
     ww_profileMissNoDir;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     nn_addSharer;
     setTimeLast;
     ss_recordGetSL1ID;
@@ -2230,7 +2268,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   
   
   transition(L2_IM, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MT) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     hh_issueStoreHit;
     //c_finalAckToDirIfNeeded;
     s_deallocateTBE;
@@ -2238,7 +2276,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   }
 
   transition(L2_IM, Data_ext_ack_not_0) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     p_addNumberOfPendingExtAcks;
     mm_rememberIfFinalAckNeeded;
     jjj_popResponeDramQueue;
@@ -2275,7 +2313,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   transition(L2_IMO, {L1_GETS,L1_GET_INSTR}) {
     ww_profileMissNoDir;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     nn_addSharer;
     setTimeLast;
     ss_recordGetSL1ID;
@@ -2290,7 +2328,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
 
 
   transition(L2_IMO, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MO) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     cc_issueStoreHitDG;
     ddd_setPendingIntAcksToOne;
     //c_finalAckToDirIfNeeded;  
@@ -2298,7 +2336,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   }
 
   transition(L2_IMO, Data_ext_ack_not_0) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     p_addNumberOfPendingExtAcks;
     mm_rememberIfFinalAckNeeded;
     jjj_popResponeDramQueue;
@@ -2311,7 +2349,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   // the directory put us in this state so it should tell us nothing (i.e. don't worry about INV or Forwards)
   // stall all L1 request
   transition(L2_IMI, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MIC) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     pp_issueStoreHitInv;
     ddd_setPendingIntAcksToOne;
     //c_finalAckToDirIfNeeded;
@@ -2319,7 +2357,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   }
 
   transition(L2_IMI, Data_ext_ack_not_0) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     p_addNumberOfPendingExtAcks;
     mm_rememberIfFinalAckNeeded;
     jjj_popResponeDramQueue;
@@ -2337,7 +2375,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   // stall on all requests
   // NOTE: A performance option might be possible to go into M state instead of MT
   transition(L2_IMZ, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MT) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     hh_issueStoreHit;
     //c_finalAckToDirIfNeeded;
     s_deallocateTBE;
@@ -2345,7 +2383,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   }
 
   transition(L2_IMZ, Data_ext_ack_not_0) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     p_addNumberOfPendingExtAcks;
     mm_rememberIfFinalAckNeeded;
     jjj_popResponeDramQueue;
@@ -2368,7 +2406,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   // the directory put us in this state so it should tell us nothing (i.e. don't worry about INV or Forwards)
   // stall all L1 requests
   transition(L2_IMOI, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MOICR) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     pp_issueStoreHitInv;
     ddd_setPendingIntAcksToOne;
     //c_finalAckToDirIfNeeded;
@@ -2376,7 +2414,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   }
 
   transition(L2_IMOI, Data_ext_ack_not_0) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     p_addNumberOfPendingExtAcks;
     mm_rememberIfFinalAckNeeded;
     jjj_popResponeDramQueue;
@@ -2400,7 +2438,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   }
 
   transition(L2_IMOZ, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MOZ) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     cc_issueStoreHitDG;
     ddd_setPendingIntAcksToOne;
     //c_finalAckToDirIfNeeded;
@@ -2408,7 +2446,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   }
 
   transition(L2_IMOZ, Data_ext_ack_not_0) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     p_addNumberOfPendingExtAcks;
     mm_rememberIfFinalAckNeeded;
     jjj_popResponeDramQueue;
@@ -2458,10 +2496,11 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
     
     ww_profileMissNoDir;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     nn_addSharer;
     setTimeLast;
     k_dataFromL2CacheToL1Requestor;
+    fjj_removeDataArray; //excl
  jab_firstUseToPrefetcherS;
  jjj_hitOnPrefetchedWay0;  //miramos si tenemos un acierto sobre una prebusqueda en el way 0
     jj_popL1RequestQueue2;
@@ -2477,18 +2516,12 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
     jjj_statsPrefetchLocalS;
     
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     nn_addSharer;
     setTimeLast;
-  //     i_allocateTBE;
-  //  xx_recordGetXL1ID;
 
-//JORGE
-//    b_issueGETX;
-//hh_issueStoreHit;
-//s_deallocateTBE;
-
-k_dataFromL2CacheToL1Requestor
+    k_dataFromL2CacheToL1Requestor;
+    fjj_removeDataArray;
 //    uu_profileMiss;
      jab_firstUseToPrefetcherS;
     jj_popL1RequestQueue2;
@@ -2506,7 +2539,7 @@ k_dataFromL2CacheToL1Requestor
 
 
   transition(L2_SM,  {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_M) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     //hh_issueStoreHit;
     //c_finalAckToDirIfNeeded;
     s_deallocateTBE;
@@ -2524,7 +2557,7 @@ k_dataFromL2CacheToL1Requestor
   }
   
   transition(L2_SM, Data_ext_ack_not_0) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     p_addNumberOfPendingExtAcks;
     mm_rememberIfFinalAckNeeded;
     jjj_popResponeDramQueue;
@@ -2553,13 +2586,13 @@ transition(L2_SSM, L2_INV) {  // could see an invalidate for SS
   }  
 
   transition(L2_SSM, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_SSMV) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     //c_finalAckToDirIfNeeded;
     jjj_popResponeDramQueue;
   }
 
   transition(L2_SSM, Data_ext_ack_not_0) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     p_addNumberOfPendingExtAcks;
     mm_rememberIfFinalAckNeeded;
     jjj_popResponeDramQueue;
@@ -2611,7 +2644,7 @@ transition(L2_SSMV, Proc_int_ack) {
   transition(L2_SS, L2_Replacement, L2_SIV) {
     i_allocateTBE;  // for internal request
     ji_marcaRepl;
-    fjj_removeDataArray;
+    //excl fjj_removeDataArray;
     bbb_setPendingIntAcksToSharers;
     tt_issueSharedInvalidateIntL1copiesRequest;
   }
@@ -2631,17 +2664,54 @@ transition(L2_SSMV, Proc_int_ack) {
     l_popForwardedRequestQueue;
   }
 
-  transition(L2_SS, {L1_GETS, L1_GET_INSTR}) {
-      uu_profileAccess;
-    jsr_setReused;
+  transition(L2_SS, {L1_GETS, L1_GET_INSTR}, L2_SS_IS) {
+    uu_profileAccess;
+    i_allocateTBE; //excl 
+    ss_recordGetSL1ID; //excl 
+    ddd_setPendingIntAcksToOne; //excl 
+    //excl jsr_setReused;
     ww_profileMissNoDir;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     setTimeLast;
-    nn_addSharer;
-    k_dataFromL2CacheToL1Requestor;
+    
+    //excl jg_issueDownGradeSmallestL1copyRequest;
+    jc_issueC2CSmallestL1copyRequest;
+       
+    //excl k_dataFromL2CacheToL1Requestor;
     jj_popL1RequestQueue2;
   }
+  
+//excl  transition(L2_SS_IS, Data_int_ack, L2_SS) {
+  transition(L2_SS_IS, Proc_last_int_ack, L2_SS) {
+    s_deallocateTBE; //excl 
+    nn_addSharer; 
+    o_popIncomingResponseQueue;
+  }
+  
+  transition(L2_SS_IS, Proc_int_ack, L2_SS) {
+    r_decrementNumberOfPendingIntAcks;
+    nn_addSharer; 
+    o_popIncomingResponseQueue;
+  }
+
+  transition(L2_SS_IS, {L1_GETS,L1_GET_INSTR}) {
+    ww_profileMissNoDir;
+    set_setMRU;
+    //excl jrdr_setReuseInDataArray;
+    jc_issueC2CSmallestL1copyRequest;
+    r_incrementNumberOfPendingIntAcks;
+    setTimeLast;
+    ss_recordGetSL1ID;
+    
+    jj_popL1RequestQueue2;
+  }
+
+  //transition(L2_IS, L1_GETX, L2_ISZ) {  // don't go there, just go to stall state
+  transition(L2_SS_IS, L1_GETX) {  // don't go there, just go to stall state
+    //z_stall;
+    x_recycleRequest;
+  }  
 
 //JORGE
 //  transition(L2_SS, L1_UPGRADE_no_others, L2_IM) {
@@ -2651,7 +2721,7 @@ transition(L2_SSMV, Proc_int_ack) {
     setTimeLast;
     jsr_setReused;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
  //   i_allocateTBE;
  //   xx_recordGetXL1ID;
 
@@ -2674,20 +2744,17 @@ k_dataFromL2CacheToL1Requestor
     jsr_setReused;
     i_allocateTBE;  // for both ext. and int.
 	set_setMRU;
-	jrdr_setReuseInDataArray;
+	//excl jrdr_setReuseInDataArray;
 	
     xx_recordGetXL1ID;
     ccc_setPendingIntAcksMinusOne;
     vv_issueInvalidateOtherIntL1copiesRequest;  // for internal
-//JORGE
-  //  b_issueGETX;  // for external
-    //uu_profileMiss;
+
     jj_popL1RequestQueue2;
   }
 
 //JORGE
 transition(L2_SS, L1_GETX, L2_MV) {
-//  transition(L2_SS, L1_GETX, L2_IMV) {
     uu_profileAccess;
     jsr_setReused;
     i_allocateTBE;  // for both ext. and int.
@@ -2695,12 +2762,10 @@ transition(L2_SS, L1_GETX, L2_MV) {
     bbb_setPendingIntAcksToSharers;
     vv_issueInvalidateOtherIntL1copiesRequest;  // for internal
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     setTimeLast;
     nn_addSharer;
-//JORGE
-   // b_issueGETX;  // for external
-    //uu_profileMiss;
+
     jj_popL1RequestQueue2;
   }
 
@@ -2717,6 +2782,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
     w_sendPutAckToL1Cache;
     kk_removeRequestSharer;
     j_set_setMRU;
+    fjj_insertionDataArray; //excl 
     jjj_keepReuseL1;
     jj_popL1RequestQueue;
   }
@@ -2837,10 +2903,11 @@ transition(L2_SS, L1_GETX, L2_MV) {
     jsr_setReused;
     ww_profileMissNoDir;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     setTimeLast;
     nn_addSharer;
     k_dataFromL2CacheToL1Requestor;
+    fjj_removeDataArray; //excl 
     jjj_statsPrefetchLocal4;
     jab_firstUseToPrefetcherX;
     jj_popL1RequestQueue2;
@@ -2851,18 +2918,11 @@ transition(L2_SS, L1_GETX, L2_MV) {
     jsr_setReused;
     ww_profileMissNoDir;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     setTimeLast;
     nn_addSharer;  
-   // i_allocateTBE;
-    //xx_recordGetXL1ID;
-
-//JORGE
-//    b_issueGETX;
-//hh_issueStoreHit;
-//s_deallocateTBE;
-	k_dataFromL2CacheToL1Requestor;
-
+ 	k_dataFromL2CacheToL1Requestor;
+    fjj_removeDataArray; //excl 
     jjj_statsPrefetchLocal4;
     jab_firstUseToPrefetcherX;
     jj_popL1RequestQueue2;
@@ -2879,7 +2939,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
   transition(L2_MT, L2_Replacement, L2_MIV) {
     i_allocateTBE;
     ji_marcaRepl;
-    fjj_removeDataArray;
+    //excl fjj_removeDataArray;
     bbb_setPendingIntAcksToSharers;
     v_issueInvalidateIntL1copyRequest;
   }
@@ -2901,7 +2961,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
     g_issueDownGradeIntL1copiesRequest;
     ss_recordGetSL1ID;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     setTimeLast;
     nn_addSharer;
     jj_popL1RequestQueue2;
@@ -2915,7 +2975,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
     bbb_setPendingIntAcksToSharers;
     v_issueInvalidateIntL1copyRequest;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     setTimeLast;
     nn_addSharer;
     xx_recordGetXL1ID;
@@ -2928,6 +2988,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
     kk_removeRequestSharer;
     m_writeDataFromRequestQueueToL2Cache;
     j_set_setMRU;
+    fjj_insertionDataArray; //excl 
     setTimeLast;
     jjj_keepReuseL1;
     jj_popL1RequestQueue;
@@ -2950,7 +3011,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
   
   transition(L2_MIV, Data_int_ack, L2_I) {
     aa_removeResponseSharer;
-    jm_writeDataFromResponseQueueToL2Cache;
+    //excl jm_writeDataFromResponseQueueToL2Cache;
     bb_dataFromL2CacheToGetSForwardIDs;  // likely won't send any messages
     gg_dataFromL2CacheToGetXForwardID;  // likely won't send any messages
     d_issuePUTX;
@@ -2972,7 +3033,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
  
   transition(L2_PMIV, Data_int_ack, L2_I) {
     aa_removeResponseSharer;
-    jm_writeDataFromResponseQueueToL2Cache;
+    //excl jm_writeDataFromResponseQueueToL2Cache;
     bb_dataFromL2CacheToGetSForwardIDsPref;  // likely won't send any messages
     gg_dataFromL2CacheToGetXForwardIDPref;  // likely won't send any messages
     d_issuePUTX;
@@ -3018,7 +3079,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
   // we stall on all L1 requests
   transition(L2_MIC, Data_int_ack, L2_I) {
     aa_removeResponseSharer;
-    jm_writeDataFromResponseQueueToL2Cache;
+    //excl jm_writeDataFromResponseQueueToL2Cache;
     gg_dataFromL2CacheToGetXForwardID;
     s_deallocateTBE;
     o_popIncomingResponseQueue;
@@ -3041,7 +3102,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
   // however one must be careful not to violate cache coherence
   transition(L2_MIT, Data_int_ack, L2_MT) {
     aa_removeResponseSharer;
-    jm_writeDataFromResponseQueueToL2Cache;
+    //excl jm_writeDataFromResponseQueueToL2Cache;
     hh_issueStoreHit;  // internal requestor
     s_deallocateTBE;
     jjj_keepReuseL1a;
@@ -3059,7 +3120,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
   // a GetS request put us in this state
   // stall must stall if we get a GETX request
   transition(L2_MO, Data_int_ack, L2_SO) {
-    jm_writeDataFromResponseQueueToL2Cache;
+    //excl jm_writeDataFromResponseQueueToL2Cache;
     ee_dataFromL2CacheToGetSIDs;  // could be an internal or external requestor
     s_deallocateTBE;
     o_popIncomingResponseQueue;
@@ -3079,7 +3140,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
     jsr_setReused;
     ww_profileMissNoDir;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     setTimeLast;
     nn_addSharer;
     ss_recordGetSL1ID;
@@ -3102,7 +3163,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
   // KEY DIFFERENCE: L2_MOICR assumes the L1 data responder moved to I state and removes the sharer,
   // while L2_MOIC assumes the L1 data responder moved to S state and doesn't remove the sharer
   transition(L2_MOIC, Data_int_ack, L2_OIC) { // need only one ack
-    jm_writeDataFromResponseQueueToL2Cache;
+    //excl jm_writeDataFromResponseQueueToL2Cache;
     ee_dataFromL2CacheToGetSIDs;
     bbb_setPendingIntAcksToSharers;
     tt_issueSharedInvalidateIntL1copiesRequest; 
@@ -3125,7 +3186,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
   // while L2_MOIC assumes the L1 data responder moved to S state and doesn't remove the sharer
   transition(L2_MOICR, Data_int_ack, L2_OIC) { // need only one ack
     aa_removeResponseSharer;
-    jm_writeDataFromResponseQueueToL2Cache;
+    //excl jm_writeDataFromResponseQueueToL2Cache;
     ee_dataFromL2CacheToGetSIDs;
     bbb_setPendingIntAcksToSharers;
     tt_issueSharedInvalidateIntL1copiesRequest; 
@@ -3141,7 +3202,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
   // simply wait on data
   // stall on everything
   transition(L2_MOZ, Data_int_ack, L2_SO) {
-    jm_writeDataFromResponseQueueToL2Cache;
+    //excl jm_writeDataFromResponseQueueToL2Cache;
     ee_dataFromL2CacheToGetSIDs;  // could be an internal or external requestor
     s_deallocateTBE;
     o_popIncomingResponseQueue;
@@ -3181,10 +3242,11 @@ transition(L2_SS, L1_GETX, L2_MV) {
     jsr_setReused;
     ww_profileMissNoDir;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     nn_addSharer;
     setTimeLast;
     k_dataFromL2CacheToL1Requestor;
+    fjj_removeDataArray; //excl 
     jj_popL1RequestQueue2;
   }
 
@@ -3194,17 +3256,11 @@ transition(L2_O, L1_GETX, L2_MT) {
     uu_profileAccess;
     jsr_setReused;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     setTimeLast;
-    nn_addSharer;
-  //  i_allocateTBE;
-  //  xx_recordGetXL1ID;
-
-//JORGE
-//    b_issueGETX;
-//hh_issueStoreHit;
-//s_deallocateTBE;
-k_dataFromL2CacheToL1Requestor
+    nn_addSharer; 
+    k_dataFromL2CacheToL1Requestor;
+    fjj_removeDataArray; //excl
     //uu_profileMiss;
     //jjj_checkDWG;
     jj_popL1RequestQueue2;
@@ -3222,7 +3278,7 @@ k_dataFromL2CacheToL1Requestor
   transition(L2_SO, L2_Replacement, L2_OIV){
     i_allocateTBE;
     ji_marcaRepl;
-    fjj_removeDataArray;
+    //excl fjj_removeDataArray;
     x_copyDataFromL2CacheToTBE;
     bbb_setPendingIntAcksToSharers;
     tt_issueSharedInvalidateIntL1copiesRequest;
@@ -3252,7 +3308,7 @@ k_dataFromL2CacheToL1Requestor
     jsr_setReused;
     ww_profileMissNoDir;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     setTimeLast;
     nn_addSharer;
     k_dataFromL2CacheToL1Requestor;
@@ -3263,7 +3319,7 @@ k_dataFromL2CacheToL1Requestor
     uu_profileAccess;
     jsr_setReused;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     nn_addSharer;
     setTimeLast;
     i_allocateTBE;
@@ -3285,7 +3341,7 @@ k_dataFromL2CacheToL1Requestor
  	jsr_setReused;
     uu_profileAccess;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     setTimeLast;
   //  i_allocateTBE;
   //  xx_recordGetXL1ID;
@@ -3311,7 +3367,7 @@ k_dataFromL2CacheToL1Requestor
     bbb_setPendingIntAcksToSharers;
     vv_issueInvalidateOtherIntL1copiesRequest;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //excl jrdr_setReuseInDataArray;
     setTimeLast;
     nn_addSharer;
 
@@ -3336,6 +3392,7 @@ k_dataFromL2CacheToL1Requestor
     kk_removeRequestSharer;
     j_set_setMRU;
     //setTimeLast;
+    fjj_insertionDataArray; //excl 
     jjj_keepReuseL1;
     jj_popL1RequestQueue;
   }	
@@ -3494,7 +3551,7 @@ transition(L2_NRSS, {L1_GETS, L1_GET_INSTR}, L2_NRSS_IS) {
 	//k_dataFromL2CacheToL1Requestor
 	ddd_setPendingIntAcksToOne;
 	jsr_setReused;
-	fjj_insertionDataArray;
+	//excl fjj_insertionDataArray;
 	ww_profileMissNoDir;
 	set_setMRU;
 	setTimeLast;
@@ -3506,7 +3563,7 @@ transition(L2_NRSS, {L1_GETS, L1_GET_INSTR}, L2_NRSS_IS) {
 }
 
 transition(L2_NRSS_IS, Data_int_ack, L2_SS) {
-    jm_writeDataFromResponseQueueToL2Cache;
+    //excl jm_writeDataFromResponseQueueToL2Cache;
     ee_dataFromL2CacheToGetSIDs;  // could be an internal or external requestor
     jpcc_profileCache2Cache;
     s_deallocateTBE;
@@ -3558,7 +3615,7 @@ transition(L2_NRSS, L1_GETX, L2_MV) {
     bbb_setPendingIntAcksToSharers;
     vv_issueInvalidateOtherIntL1copiesRequest;  // for internal
     set_setMRU;
-    fjj_insertionDataArray;
+    //excl fjj_insertionDataArray;
     setTimeLast;
     nn_addSharer;
     //b_issueGETX;  // for data
@@ -3574,7 +3631,7 @@ transition(L2_NRSS, L1_UPGRADE, L2_MV) {
     ccc_setPendingIntAcksMinusOne;
     vv_issueInvalidateOtherIntL1copiesRequest;  // for internal
     set_setMRU;
-    fjj_insertionDataArray;
+     //excl fjj_insertionDataArray;
     setTimeLast;
     nn_addSharer;
     //b_issueGETX;  // for data
@@ -3631,7 +3688,7 @@ transition(L2_NRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
 	a_issueGETS;
 	ss_recordGetSL1ID;
 	jsr_setReused;
-	fjj_insertionDataArray;
+	//excl fjj_insertionDataArray;
 	jjj_statsPrefetchLocal; 
 	jjj_statsPrefetchLocalS;
     
@@ -3650,7 +3707,7 @@ transition(L2_NRS, L1_GETX, L2_IM) {
     jjj_statsPrefetchLocalS;
     
     set_setMRU;
-    fjj_insertionDataArray;
+    //excl fjj_insertionDataArray;
     nn_addSharer;
     setTimeLast;
 	i_allocateTBE;
@@ -3689,7 +3746,7 @@ transition(L2_INRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
     nn_addSharer;
     //i_allocateTBE;
     setTimeLast;
-    fjj_insertionDataArray;
+    //exc fjj_insertionDataArray;
     ss_recordGetSL1ID;
     jj_popL1RequestQueue2;
 
@@ -3726,7 +3783,7 @@ transition(L2_INRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
     ww_profileMissNoDir;
     set_setMRU;
      nn_addSharer;
-     fjj_insertionDataArray;
+     //excl fjj_insertionDataArray;
    setTimeLast;
     ss_recordGetSL1ID;
     jj_popL1RequestQueue2;
@@ -3739,7 +3796,7 @@ transition(L2_INRM, L1_GETX) {  // don't go there, just go to stall state
 }
   
 transition(L2_INRM, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_NRMT) {
-	u_writeDataFromResponseQueueToL2Cache;
+	//excl u_writeDataFromResponseQueueToL2Cache;
 	hh_issueStoreHit;
     //c_finalAckToDirIfNeeded;
 	s_deallocateTBE;
@@ -3747,7 +3804,7 @@ transition(L2_INRM, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_NRMT) {
 }
 
 transition(L2_INRM, Data_ext_ack_not_0) {
-	u_writeDataFromResponseQueueToL2Cache;
+	//excl u_writeDataFromResponseQueueToL2Cache;
 	p_addNumberOfPendingExtAcks;
 	mm_rememberIfFinalAckNeeded;
 	jjj_popResponeDramQueue;
@@ -3758,7 +3815,7 @@ transition(L2_INRM, Data_ext_ack_not_0) {
   // stall on all requests
   // NOTE: A performance option might be possible to go into M state instead of MT
   transition(L2_INRMZ, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_NRMT) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     hh_issueStoreHit;
     //c_finalAckToDirIfNeeded;
     s_deallocateTBE;
@@ -3766,7 +3823,7 @@ transition(L2_INRM, Data_ext_ack_not_0) {
   }
 
 transition(L2_INRMZ, Data_ext_ack_not_0) {
-    u_writeDataFromResponseQueueToL2Cache;
+    //excl u_writeDataFromResponseQueueToL2Cache;
     p_addNumberOfPendingExtAcks;
     mm_rememberIfFinalAckNeeded;
     jjj_popResponeDramQueue;
@@ -3798,7 +3855,7 @@ transition(L2_NRMT, {L1_GETS, L1_GET_INSTR}, L2_MO) {
     g_issueDownGradeIntL1copiesRequest;
     ss_recordGetSL1ID;
     set_setMRU;
-    fjj_insertionDataArray;
+    //excl fjj_insertionDataArray;
     setTimeLast;
     nn_addSharer;
     jj_popL1RequestQueue2;
@@ -3812,7 +3869,7 @@ transition(L2_NRMT, L1_GETX, L2_MIT) {
     bbb_setPendingIntAcksToSharers;
     v_issueInvalidateIntL1copyRequest;
     set_setMRU;
-    fjj_insertionDataArray;
+    //excl fjj_insertionDataArray;
     setTimeLast;
     nn_addSharer;
     xx_recordGetXL1ID;
@@ -3846,7 +3903,7 @@ transition(L2_NRMT, L1_PUTX_last, L2_NRS) {
 
 transition(L2_NRMIT, Data_int_ack, L2_NRMT) {
     aa_removeResponseSharer;
-    jm_writeDataFromResponseQueueToL2Cache;
+    //excl jm_writeDataFromResponseQueueToL2Cache;
     hh_issueStoreHit;  // internal requestor
     s_deallocateTBE;
     jjj_keepReuseL1a;
@@ -3861,7 +3918,7 @@ transition(L2_NRMIT, {Forwarded_GETS, Forwarded_PREFS,Forwarded_PREFX, Forwarded
 
 transition(L2_NRMIV, Data_int_ack, L2_I) {
     aa_removeResponseSharer;
-    jm_writeDataFromResponseQueueToL2Cache;
+    //excl jm_writeDataFromResponseQueueToL2Cache;
     bb_dataFromL2CacheToGetSForwardIDs;  // likely won't send any messages
     gg_dataFromL2CacheToGetXForwardID;  // likely won't send any messages
     d_issuePUTX;

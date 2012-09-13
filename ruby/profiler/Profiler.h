@@ -144,6 +144,7 @@ public:
   void addSecondaryStatSample(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id);
   void addSecondaryStatSample(CacheRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id);
   void addAddressTraceSample(const CacheMsg& msg, NodeID id);
+  void addL2dataMissStatSample(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id);
 
   void profileRequest(const string& requestStr);
   void profileSharing(const Address& addr, AccessType type, NodeID requestor, const Set& sharers, const Set& owner);

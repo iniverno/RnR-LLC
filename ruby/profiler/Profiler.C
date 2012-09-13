@@ -1221,6 +1221,18 @@ void Profiler::addL2StatSample(GenericRequestType requestType, AccessModeType ty
  
 }
 
+void Profiler::addL2dataMissStatSample(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id)
+{
+  m_perProcTotalMisses[id]++;
+  if (type == AccessModeType_SupervisorMode) {
+    m_perProcSupervisorMisses[id]++;
+  } else {
+    m_perProcUserMisses[id]++;
+  }
+  m_L2_cache_profiler_ptr->addStatSample(requestType, type, msgSize, pfBit, id, true);
+
+}
+
 void Profiler::addL1DStatSample(const CacheMsg& msg, NodeID id)
 {
   m_L1D_cache_profiler_ptr->addStatSample(CacheRequestType_to_GenericRequestType(msg.getType()),

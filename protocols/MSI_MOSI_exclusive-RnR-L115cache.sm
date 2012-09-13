@@ -116,6 +116,7 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
     L1_Data,  "Data", desc="Data in response to an L1 request, transistion to M or S depending on request";
     L1_Data_S,  "Data S", desc="Data in response to an L1 request, write data then transistion to S";
     L1_Data_I,  "Data I", desc="Data in response to an L1 request, write data then transistion to I";
+    L1_Data_C2C,  "Data c2c", desc="Data in response to an L1 request";
 
     // receiving of acks
     L1_PutAck, "Put Ack", desc="PutS or PutX ack from L2";
@@ -126,6 +127,8 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
     L15_Replacement,  desc="L15 Replacement", format="!r";    
     // Currently same as replacement, request initiated when block is in the wrong L1 cache
     L1_WriteBack,    desc="on-chip L1 cache must write back to shared L2";
+    
+    L1_to_L1, desc="cache to cache request";
   }
 
   // TYPES
@@ -134,7 +137,7 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
   structure(Entry, desc="...", interface="AbstractCacheEntry" ) {
     State CacheState,        desc="cache state";
     DataBlock DataBlk,       desc="data for the block";
-     bool prefDWG, desc="marca si nos degradado una prebœsqueda externa";
+     bool prefDWG, desc="marca si nos degradado una prebï¿½squeda externa";
     State PrevLocalCacheState,          desc="previous local cache state";
     State PrevRemoteCacheState,          desc="previous remote cache state";
     MachineID prevOwner,				desc="previous owner";
@@ -325,7 +328,11 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
             error("Invalid L1 response type");
           }
         } else {
-          error("A non-L2 cache sent a response to a L1 cache");
+           if(in_msg.Type == CoherenceResponseType:DATA) {
+            trigger(Event:L1_Data_C2C, in_msg.Address);  // L1 now has data in its desired state
+          } else {
+            error("A non-L2 cache sent a response to a L1 cache");
+          }
         }
       }
     }
@@ -355,7 +362,11 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
             error("Invalid forwarded request type");
           }
         } else {
-          error("A non-L2 cache sent a request to a L1 cache");
+          if (in_msg.Type == CoherenceRequestType:L1_C2C) {
+            trigger(Event:L1_to_L1, in_msg.Address);  // L1 must invalidate it's modified version
+          } else {
+            error("A non-L2 cache sent a request to a L1 cache");
+          }
         }
       }
     }
@@ -798,7 +809,7 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
     if (L15cacheMemory.isTagPresent(address)) {
       L15cacheMemory.deallocate(address);
     } 
-    // Si tambiŽn est‡ en la L1, tambiŽn se desaloja
+    // Si tambiï¿½n estï¿½ en la L1, tambiï¿½n se desaloja
        
     if (L1DcacheMemory.isTagPresent(address)) {
       L1DcacheMemory.deallocate(address);
@@ -868,9 +879,9 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
 //      Se asigna el bloque reservado y se copian los datos
 //      Se ha reservado el bloque en la L1D/L1I al comprobar el puerto de entrada mandatoryQueue_in
 //
-//      No lleva retardo asociado ya que se puede hacer a la vez que la operaci—n de protocolo
+//      No lleva retardo asociado ya que se puede hacer a la vez que la operaciï¿½n de protocolo
 //
-  action(ooo_compruebaPresenciaL1D, "ooo", desc="Si el bloque no est‡ en la L1D, se pone") {
+  action(ooo_compruebaPresenciaL1D, "ooo", desc="Si el bloque no estï¿½ en la L1D, se pone") {
 	DEBUG_EXPR(address);
     if (L1DcacheMemory.isTagPresent(address)==false) {      
       L1DcacheMemory.allocate(address);
@@ -881,7 +892,7 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
     //A assert (L15cacheMemory.isTagPresent(address)) ;
     
   }
-  action(oop_compruebaPresenciaL1I, "oop", desc="Si el bloque no est‡ en la L1I, se pone") {
+  action(oop_compruebaPresenciaL1I, "oop", desc="Si el bloque no estï¿½ en la L1I, se pone") {
 	DEBUG_EXPR(address);
     if (L1IcacheMemory.isTagPresent(address)==false) {
       L1IcacheMemory.allocate(address);
@@ -899,6 +910,22 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
   }
 
 
+  // L1 responding to a L2 request with data
+  action(e_dataFromL1CacheToL1Cache, "cc", desc="Send data from L1 cache to L2 Cache") {
+    peek(requestIntraChipL1Network_in, RequestMsg) {
+      enqueue(responseIntraChipL1Network_out, ResponseMsg, latency="L15_REQUEST_LATENCY") {
+        out_msg.Address := address;
+        out_msg.Type := CoherenceResponseType:DATA;
+        out_msg.SenderMachId := machineID;
+        out_msg.Destination.add(in_msg.RequestorMachId);
+        //DB out_msg.DataBlk := getL1CacheEntry(address).DataBlk;
+        DEBUG_EXPR(address);
+        DEBUG_EXPR(out_msg.Destination);
+        DEBUG_EXPR(out_msg.DataBlk);
+        out_msg.MessageSize := MessageSizeType:Data;
+      }
+    }
+  }
 
 
   //*****************************************************
@@ -965,6 +992,11 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
 
   transition(L1_S, L1_DownGrade) {
     e_dataFromL1CacheToL2Cache;
+    l_popRequestQueue;
+  }
+
+  transition({L1_S}, {L1_to_L1}) {
+    e_dataFromL1CacheToL1Cache
     l_popRequestQueue;
   }
 
@@ -1067,6 +1099,13 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
   }
   
   transition(L1_IS, L1_Data, L1_S) {
+    //DB u_writeDataToL1Cache;
+    h_load_hit;
+    s_deallocateTBE;
+    o_popIncomingResponseQueue;
+  }
+  
+  transition(L1_IS, L1_Data_C2C, L1_S) {
     //DB u_writeDataToL1Cache;
     h_load_hit;
     s_deallocateTBE;

@@ -70,6 +70,7 @@ enumeration(CoherenceRequestType, desc="...") {
   INV_P,       desc="INValidate";
   INV_S_P,     desc="INValidate the shared version";
   L1_DG,     desc="L1 cache DownGrade";
+  L1_C2C, 	desc="L1 to L1 request from L2";
   WB_ACK,    desc="Write Back ACKnowledgment";
   EXE_ACK,   desc="EXclusivE ACKnowledgment";
   PREFS, desc="read prefetch";
@@ -103,7 +104,7 @@ structure(RequestMsg, desc="...", interface="NetworkMessage") {
   string L1CacheStateStr,       desc="describes L1 cache block state";  
   string L2CacheStateStr,       desc="describes L2 cache block state";  
   PrefetchBit Prefetch,         desc="Is this a prefetch request";
-  Address ProgramCounter,		desc="el PC de la instrucci—n de memoria";
+  Address ProgramCounter,		desc="el PC de la instrucciï¿½n de memoria";
   bool prefDWG, 					desc="marca si el bloque fue degradado";
   CoherenceRequestType Type_UG_PREFETCH,    desc="Type of request has caused de prefetch upgrade";
   MachineID coreID,    desc="What core request";
