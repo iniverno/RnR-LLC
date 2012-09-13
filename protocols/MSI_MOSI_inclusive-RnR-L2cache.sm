@@ -1405,6 +1405,12 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     }
   }
 
+  action(uu_profileDataMiss, "\du", desc="Profile the demand data miss") {
+    peek(L1RequestIntraChipL2Network_in, RequestMsg) {
+      profile_L2Cache_dataMiss(convertToGenericType(in_msg.Type), in_msg.AccessMode, MessageSizeTypeToInt(in_msg.MessageSize), in_msg.Prefetch, L1CacheMachIDToProcessorNum(in_msg.RequestorMachId));
+    }
+  }
+  
   action(uu_profileAccess, "\jjju", desc="Profile an access") {
     peek(L1RequestIntraChipL2Network_in, RequestMsg) {
       profile_accessL3(in_msg.AccessMode, L1CacheMachIDToProcessorNum(in_msg.RequestorMachId));
@@ -3495,13 +3501,13 @@ transition(L2_NRSS, {L1_GETS, L1_GET_INSTR}, L2_NRSS_IS) {
 	ddd_setPendingIntAcksToOne;
 	jsr_setReused;
 	fjj_insertionDataArray;
-	ww_profileMissNoDir;
 	set_setMRU;
 	setTimeLast;
 	jg_issueDownGradeSmallestL1copyRequest;  // Order with respect to nn_addSharer is important!!!!
 	nn_addSharer;
 	ss_recordGetSL1ID;
     //a_issueGETS;
+    uu_profileDataMiss;
 	jj_popL1RequestQueue2;
 }
 
@@ -3551,7 +3557,6 @@ transition(L2_NRSS, L1_UPGRADE_no_others, L2_NRMT) {
 }
 
 transition(L2_NRSS, L1_GETX, L2_MV) {
-    uu_profileAccess;
     jsr_setReused;
     i_allocateTBE;  // for both ext. and int.
     xx_recordGetXL1ID;
@@ -3563,6 +3568,7 @@ transition(L2_NRSS, L1_GETX, L2_MV) {
     nn_addSharer;
     //b_issueGETX;  // for data
     //uu_profileMiss;
+    uu_profileDataMiss;
     jj_popL1RequestQueue2;
 }
 
@@ -3626,7 +3632,6 @@ transition(L2_NRS, L2_Replacement, L2_I) {
 }
 
 transition(L2_NRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
-	uu_profileAccess;
 	i_allocateTBE;  
 	a_issueGETS;
 	ss_recordGetSL1ID;
@@ -3635,16 +3640,15 @@ transition(L2_NRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
 	jjj_statsPrefetchLocal; 
 	jjj_statsPrefetchLocalS;
     
-	ww_profileMissNoDir;
 	set_setMRU;
 	nn_addSharer;
 	setTimeLast;
+	uu_profileDataMiss;
 	jj_popL1RequestQueue2;
 }
 
 
 transition(L2_NRS, L1_GETX, L2_IM) {
-    uu_profileAccess;
     jsr_setReused;
     jjj_statsPrefetchLocal;
     jjj_statsPrefetchLocalS;
@@ -3657,7 +3661,7 @@ transition(L2_NRS, L1_GETX, L2_IM) {
 	xx_recordGetXL1ID;
 
 	b_issueGETX;
-//    uu_profileMiss;
+	uu_profileDataMiss;
     jj_popL1RequestQueue2;
 }
   
@@ -3790,9 +3794,7 @@ transition(L2_NRMT, L2_Replacement, L2_NRMIV) {
 }
 
 transition(L2_NRMT, {L1_GETS, L1_GET_INSTR}, L2_MO) {
-    uu_profileAccess;
     jsr_setReused;
-    ww_profileMissNoDir;
     i_allocateTBE;
     bbb_setPendingIntAcksToSharers;
     g_issueDownGradeIntL1copiesRequest;
@@ -3801,13 +3803,12 @@ transition(L2_NRMT, {L1_GETS, L1_GET_INSTR}, L2_MO) {
     fjj_insertionDataArray;
     setTimeLast;
     nn_addSharer;
+    uu_profileDataMiss;
     jj_popL1RequestQueue2;
 }
 
 transition(L2_NRMT, L1_GETX, L2_MIT) {
-    uu_profileAccess;
     jsr_setReused;
-    ww_profileMissNoDir;
     i_allocateTBE;
     bbb_setPendingIntAcksToSharers;
     v_issueInvalidateIntL1copyRequest;
@@ -3816,6 +3817,7 @@ transition(L2_NRMT, L1_GETX, L2_MIT) {
     setTimeLast;
     nn_addSharer;
     xx_recordGetXL1ID;
+    uu_profileDataMiss;
     jj_popL1RequestQueue2;
   }
 
