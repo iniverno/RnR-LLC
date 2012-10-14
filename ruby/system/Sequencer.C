@@ -1003,6 +1003,11 @@ bool Sequencer::tryCacheAccess(const Address& addr, CacheRequestType type,
     
     g_system_ptr->getProfiler()->addL2Acceso(access_mode,  (m_chip_ptr->getID()*RubyConfig::numberOfProcsPerChip()+m_version));  
   } */
+  if(g_LLC_PERFECT_INFO ) {
+	  Chip* n= dynamic_cast<Chip*>(m_chip_ptr);
+
+	  n->m_L2Cache_L2cacheMemory_vec[map_Address_to_L2Node(addr)]->testCacheAccess(line_address(addr), type, data_ptr);
+  }
   
   return ret;
 }

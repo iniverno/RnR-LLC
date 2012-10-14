@@ -262,7 +262,7 @@ g_REPLACEMENT_POLICY_L2_3SET: false
 g_SAMPLED_CACHE: false
 g_DEBUG_SAMPLED_CACHE: false
 g_RESET_REUSED_FROM_SHADOW: true
-
+g_LLC_PERFECT_INFO: false
 g_QUICK_MEM: false
 g_PILAS: false
 g_L1Ilatency: 1

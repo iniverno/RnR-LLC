@@ -7,12 +7,14 @@
 # of this file with the -no-log flag.
 #
 # Running on atps (Linux 2.6.18-238.12.1.el5 x86_64)
-# command-line arguments: -stall -x prueba-quick-8p.simics -no-win 
+# command-line arguments: -stall -x prueba-cohere-8p-base.simics -no-win 
 #
 # Add commands that should run when Simics starts to this file.
 #
-prefs->swap_dir = /export/scratch/users/jalbe/tmp/
-read-configuration "/export/scratch/users/jalbe/checkpoints/mix-15.8p-8t-32G-1000-bind.a0.pg.shared-16w-4M.conf"
+prefs->swap_dir = /export/scratch/users/jalbe/tmp
+#read-configuration "/export/scratch/users/jalbe/checkpoints/game01-mix-36.8p-4t-32G-1000-bind.a.conf"
+read-configuration "/export/scratch/users/jalbe/checkpoints/ocean/8p/ocean_started.conf"
+#read-configuration "/export/scratch/users/jalbe/checkpoints/parsec21-bodytrack.ROI.8p.native.a.conf"
 instruction-fetch-mode instruction-fetch-trace
 istc-disable
 dstc-disable
@@ -25,48 +27,60 @@ ruby0.setparam g_PROCS_PER_CHIP 8
 ruby0.setparam g_NUM_MEMORIES 1
 ruby0.setparam g_NUM_L2_BANKS 4
 ruby0.setparam_str g_NETWORK_TOPOLOGY PT_TO_PT
+ruby0.setparam g_endpoint_bandwidth 16000
 ruby0.setparam g_PAGE_INTERLEAVING 0
 ruby0.setparam g_GROUP_L2BANKS_TO_MEM 1
-ruby0.setparam g_DEADLOCK_THRESHOLD 10000
+ruby0.setparam g_DEADLOCK_THRESHOLD 5000
+#
+ruby0.setparam_str REMOVE_SINGLE_CYCLE_DCACHE_FAST_PATH false #false --> L1 latency = 1 ciclo
 ruby0.setparam_str g_REPLACEMENT_POLICY_L2_3SET true
-ruby0.setparam_str g_REPLACEMENT_POLICY_QUICK_L15 LRU
-ruby0.setparam_str g_REPLACEMENT_POLICY_QUICK_L2 NRRa
-ruby0.setparam_str g_REPLACEMENT_POLICY_QUICK_L2_3SET true
-ruby0.setparam_str REMOVE_SINGLE_CYCLE_DCACHE_FAST_PATH false
+ruby0.setparam_str g_REPLACEMENT_POLICY_L2 LRU
+ruby0.setparam_str g_REPLACEMENT_POLICY_L1 LRU
 ruby0.setparam_str g_PILAS false
 ruby0.setparam_str g_SHADOW false
-ruby0.setparam_str g_FUNCTIONAL_SHADOW false
 ruby0.setparam g_RRIP_N_BITS 3
-ruby0.setparam_str FINITE_BUFFERING false
+ruby0.setparam_str FINITE_BUFFERING true
 ruby0.setparam SIMICS_RUBY_MULTIPLIER 1
-ruby0.setparam_str g_QUICK_MEM true
+ruby0.setparam_str g_QUICK_MEM false
 ruby0.setparam g_NUM_SMT_THREADS 1
+#
 ruby0.setparam g_PREFETCHER 0
+ruby0.setparam g_DEBUG_PREFETCHER 0
+ruby0.setparam g_PREFETCHER_L1 0
+ruby0.setparam g_PREFETCH_MECH 10
+ruby0.setparam g_PREFETCH_DEGREE 4
+#
 ruby0.setparam g_REUSED_PAGE 0
 ruby0.setparam g_SHADOW_ON 0
 ruby0.setparam g_SOLO_UNO 0
 ruby0.setparam g_TAM_MAX_REUSED 4
-ruby0.setparam g_PROC_AISLADO 2
-ruby0.setparam_str g_INCLUSION_L2_L1 false
-ruby0.setparam_str g_EXCLUSION_L3 false
-ruby0.setparam_str g_INCLUSION_L3 true
-ruby0.setparam_str USER_MODE_ONLY true
+ruby0.setparam g_PROC_AISLADO 0
+ruby0.setparam_str USER_MODE_ONLY false
+#
+### configuracion de los arrays
+#
 ruby0.setparam g_L1Ilatency 1
 ruby0.setparam g_L1Dlatency 1
 ruby0.setparam L1_CACHE_ASSOC 4
 ruby0.setparam L1_CACHE_NUM_SETS_BITS 7
 ruby0.setparam L15_CACHE_ASSOC 8
 ruby0.setparam L15_CACHE_NUM_SETS_BITS 9
-ruby0.setparam L2_CACHE_ASSOC 64
+ruby0.setparam L2_CACHE_ASSOC 16
 ruby0.setparam L2_CACHE_NUM_SETS_BITS 13
-ruby0.setparam_str g_TRAZA_TAM_3SET true
+ruby0.setparam_str g_TRAZA_TAM_3SET false
 ruby0.setparam_str g_PROTEGE_RRIP false
-ruby0.setparam_str g_RESET_REUSED_FROM_SHADOW true
+ruby0.setparam L1CACHE_TRANSITIONS_PER_RUBY_CYCLE 2
+ruby0.setparam L2CACHE_TRANSITIONS_PER_RUBY_CYCLE 2
+ruby0.setparam_str g_LLC_PERFECT_INFO true
+#
+#
+ruby0.setparam g_DEBUG_ONE_ADDRESS 1
+#
+ruby0.setparam g_LIFETRACE 0
+ruby0.setparam g_CARGA_CACHE 0
 ruby0.init
 ruby0.clear-stats
-date
 ruby0.reset-temp
 date
-cc 200000000
-Abort (SIGABRT) in main thread
+cc 100000000
 q
