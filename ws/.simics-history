@@ -8638,3 +8638,362 @@ q
 q
 q
 q
+q
+q
+q
+q
+q
+d
+q
+q
+d
+y
+q
+q
+more stats-rt0
+q
+c
+q
+q
+q
+q
+ruby0.dump-stats
+c
+q
+q
+c
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+c
+q
+y
+q
+q
+q
+ruby0.dump-stats
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+Q
+q
+q
+q
+q
+ruby0.dump-stats
+q
+q
+q
+q
+ruby0.dump-stats
+c
+ruby0.dump-stats
+q
+q
+q
+q
+c
+con0.input("ls\n")
+c
+q
+conf.con0.input = "cd /cpu2k6/403.gcc/run/run_base_ref_v01.sparcvis2-64.0000\n" 
+con0.input("cd /cpu2k6/403.gcc/run/run_base_ref_v01.sparcvis2-64.0000\n" )
+c
+con0.input("\n")
+c
+con0.input(""./gcc_base.v01.sparcvis2-64 166.i -o 166.s & \n\n")
+con0.input("./gcc_base.v01.sparcvis2-64 166.i -o 166.s & \n\n")
+c
+con0.input("vmstat 1 &\n")
+c
+con0.input("vmstat 1 &\n")
+c
+con0.input("cd /cpu2k6/403.gcc/run/run_base_ref_v01.sparcvis2-32.0000\n" )
+c
+con0.input("./gcc_base.v01.sparcvis2-32 166.i -o 166.s & \n\n")
+c
+con0.input("vmstat 1 &\n")
+c
+con0.input("mpstat 1 &\n")
+c
+con0.input("ls -l\n")
+c
+con0.input("./gcc_base.v01.sparcvis2-32 200.i -o 200.s & \n\n")
+c
+q
+con0.input("cd /cpu2k6/403.gcc/run/run_base_ref_v01.sparcvis2-32.0000\n" )
+c
+con0.input("mpstat 1 &\n")
+con0.input("bash \n")
+c
+con0.input("pbind -b 0 $$ \n")
+c
+con0.input("./gcc_base.v01.sparcvis2-32 200.i -o 200.s & \n\n")
+c
+q
+con0.input("cd /cpu2k6/401.bzip2/run/run_base_ref_v01.sparcvis2-64.0000\n" )
+c
+con0.input("bash\n")
+c
+con0.input("pbind -b 1 $$\n\n")
+c
+con0.input("mpstat 1 &\n")
+c
+con0.input("./bzip2_base.v01.sparcvis2-64 input.program 280 &  \n")
+c
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+q
+ruby0.dump-stats
+q
+load-persistent-state abisko.3disks.state
+q
+q
+load-persistent-state abisko.3disks.state
+c
+q
+q
+load-persistent-state abisko.3disks.state
+c
+con0.input("ls; ls /; pwd \n")
+c
+sd0.info
+sd0.logo
+sd0.log
+c
+con0.input("ls\n")
+c
+con0.input("ls\n")
+c
+con0.info
+con0.info
+con0.status 
+q
+sd2.info
+sd1.info
+sd0.info
+sd0.info
+sd0.print-partition-info 
+sd0.print-partition-info 
+sd0.print-partition-info 0
+sd0.print-partition-info 1
+sd0.print-partition-info 2
+q
+q
+load-persistent-state abisko.3disks.state
+c
+q
+c
+q
+c
+q
+c
+q
+save-persistent-state prueba-state
+q
+qq
+q
+q
+q
+c
+con0.input("ls\n")
+c
+con0.input("ls cpu2k6; ls mnt; ls /mnt/parsec\n")
+c
+con0.input("ls cpu2k6; ls /mnt/new; ls /mnt/new2\n")
+c
+con0.input("ls /mnt/new; ls /mnt/new2\n")
+c
+con0.input("cd mnt\n")
+c
+con0.input("ls\n")
+c
+con0.input("cd new\n")
+c
+con0.input("pwd\n")
+c
+con0.input("ls\n")
+c
+q
+con0.input("cd /mnt/new2\n")
+c
+con0.input("pwd\n")
+c
+con0.input("ls\n")
+c
+con0.input("ls -a\n")
+c
+q
+load-persistent-state /export/scratch/users/jalbe/tmp/
+load-persistent-state /export/scratch/users/jalbe/tmp/estado-pers.SPEC-PARSEC.state
+c
+q
+con0.input("mount /mnt/new\n")
+c
+con0.input("ls /mnt/new\n")
+c
+con0.input("ls /mnt/new/prod\n")
+c
+con0.input("ls /mnt/new/prod/lib\n")
+c
+con0.input("mount /mnt/new2\n")
+c
+con0.input("ls /mnt/new2\n")
+c
+q
+con0.input("mount /mnt/new2\n")
+c
+con0.input("ls /mnt/new\n")
+con0.input("mount /mnt/new\n")
+c
+write-configuration /export/scratch/users/jalbe/tmp/cpu2k6-parsec21.booted-mounted.conf
+q
+q
+c
+q
+c√
+c
+con0.input("psrset -c 0,1,2,3\n")
+c
+con0.input("psrset -c 0-3\n")
+c
+con0.input("bash\n")
+c
+q
+conf.con0.input("psrset -c 0\n")
+conf.con0.input("psrset -c 1\n")
+conf.con0.input("psrset -c 2\n")
+conf.con0.input("psrset -c 3\n")
+con0.input("psrset -c 0\n")
+con0.input("psrset -c 1\n")
+con0.input("psrset -c 2\n")
+con0.input("psrset -c 3\n")
+con0.input("psrset -c 4-7\n")
+c
+con0.input("cd /mnt/new\n")
+c
+con0.input("ls\n")
+c
+con0.input("cd /mnt/new2\n")
+c
+con0.input("ls\n")
+c
+q
+q
+q
+q
+q
+c
+c
+q
+c
+q
+q
+q
+q
+q
+con0.input("init 0\n")
+c
+save-persistent-state cpu2k6-parsec21-persistent-state.state
+q
+q
+load-persistent-state /export/scratch/users/jalbe/tmp/cpu2k6-parsec21-persistent-state.state
+c
+q
+load-persistent-state /export/scratch/users/jalbe/tmp/cpu2k6-parsec21-persistent-state.state
+c
+load-persistent-state /export/scratch/users/jalbe/tmp/cpu2k6-parsec21-persistent-state.state
+c
+con0.input("ls\n")
+c
+con0.input("ls\n")
+c
+con0.input("pwd\n")
+c
+q
+load-persistent-state /export/scratch/users/jalbe/tmp/cpu2k6-parsec21-persistent-state.state
+c
+con0.input("pwd\n")
+c
+c
+con0.input("pwd\n")
+c
+con0.input("mount /mnt/new\n")
+c
+con0.input("mount /mnt/new2\n")
+c
+write-configuration /export/scratch/users/jalbe/tmp/cpu2k6-parsec21.booted-mounted.16p.conf
+write-configuration /export/scratch/users/jalbe/tmp/cpu2k6-parsec21.booted-mounted.16p.conf
+q
+c
+con0.input("echo $LD_LIBRARY_PATH\n")
+c
+con0.input("ls /lib\n")
+c
+con0.input("ls /usr/lib\n")
+c
+con0.input("ls /usr/\n")
+c
+con0.input("ls /usr/local\n")
+c
+con0.input("ls /usr/lib/libstl*\n")
+c
+con0.input("ls /lib/libstl*\n")
+c
+con0.input("ls /usr/local/lib/libstl*\n")
+c
+con0.input("/lib64/libstl*\n")
+c
+con0.input("ls /mnt/new\n")
+c
+con0.input("ls /mnt/new/lib\n")
+c
+con0.input("ls /mnt/new/lib/stlport4\n")
+c
+q
