@@ -1,4 +1,0 @@
-#!/bin/sh
-# this file will be overwritten by the workspace setup script
-SIMICS_WORKSPACE="/export/home/jalbe/comun/gems/ws"; export SIMICS_WORKSPACE
-exec "/usr/local/pkg/simics-3.0.31/bin/simics-eclipse" -data "/export/home/jalbe/comun/gems/ws" ${1+"$@"}

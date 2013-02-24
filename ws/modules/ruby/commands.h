@@ -1,1 +1,0 @@
-../../../ruby/simics/commands.h
