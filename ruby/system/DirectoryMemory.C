@@ -6,9 +6,9 @@
 
     --------------------------------------------------------------------
 
-    This file is part of the Ruby Multiprocessor Memory System Simulator, 
-    a component of the Multifacet GEMS (General Execution-driven 
-    Multiprocessor Simulator) software toolset originally developed at 
+    This file is part of the Ruby Multiprocessor Memory System Simulator,
+    a component of the Multifacet GEMS (General Execution-driven
+    Multiprocessor Simulator) software toolset originally developed at
     the University of Wisconsin-Madison.
 
     Ruby was originally developed primarily by Milo Martin and Daniel
@@ -19,7 +19,7 @@
     University of Wisconsin was performed by Alaa Alameldeen, Brad
     Beckmann, Jayaram Bobba, Ross Dickson, Dan Gibson, Pacia Harper,
     Derek Hower, Milo Martin, Michael Marty, Carl Mauer, Michelle Moravan,
-    Kevin Moore, Andrew Phelps, Manoj Plakal, Daniel Sorin, Haris Volos, 
+    Kevin Moore, Andrew Phelps, Manoj Plakal, Daniel Sorin, Haris Volos,
     Min Xu, and Luke Yen.
     --------------------------------------------------------------------
 
@@ -56,7 +56,7 @@
 
 /*
  * DirectoryMemory.C
- * 
+ *
  * Description: See DirectoryMemory.h
  *
  * $Id$
@@ -67,60 +67,29 @@
 #include "Driver.h"
 #include "DirectoryMemory.h"
 #include "RubySlicc_Util.h"
-#include "RubyConfig.h" 
-#include "Chip.h" 
-#include "interface.h"
+#include "RubyConfig.h"
+#include "Chip.h"
+//#include "interface.h"
 
 DirectoryMemory::DirectoryMemory(Chip* chip_ptr, int version)
-{ 
-  partes=512;
-  logpartes=9;
-  
+{
   m_chip_ptr = chip_ptr;
   m_version = version;
   // THIS DOESN'T SEEM TO WORK -- MRM
   // m_size = RubyConfig::memoryModuleBlocks()/RubyConfig::numberOfDirectory();
-  cout << "memoryModuleBlocks:  " << RubyConfig::memoryModuleBlocks() << endl;
-  m_size = RubyConfig::memoryModuleBlocks() / partes ;
-  
-   cout << "memoryModuleBlocks >>:  " << m_size<< endl;
-  cout << sizeof(Directory_Entry*[partes][m_size]) << endl;
+  m_size = RubyConfig::memoryModuleBlocks();
   assert(m_size > 0);
-  
-  
-  // allocates an array of directory entry pointers & sets them to NULL
-  	m_entries=new Directory_Entry**[partes];
-  	for(int i=0; i< partes; i++) m_entries[i] = NULL;
-  	
-/*  for(int i=0; i< partes; i++)
-  {
-    m_entries[i] = new Directory_Entry*[m_size];  
-    if (m_entries[i] == NULL) {
-      ERROR_MSG("Directory Memory: unable to allocate memory.");
-    }
-  }*/
-  /*
-  for(int j=0;j< partes;j++)
-    for (int i=0; i < m_size; i++) {
-      m_entries[j][i] = NULL;
-    }
-  */  
-    
+  // WF: Maps do not need to be pre allocated.
 }
 
 DirectoryMemory::~DirectoryMemory()
 {
   // free up all the directory entries
-  for(int j=0; j< partes;j++)
-  for (int i=0; i < m_size; i++) {
-    if (m_entries[j][i] != NULL) {
-      delete m_entries[j][i];
-      m_entries[j][i] = NULL;
+  for (DirectoryMap::iterator iEntries = m_entries.begin(); iEntries != m_entries.end(); ++iEntries) {
+    if (iEntries->second != NULL) {
+      delete iEntries->second;
     }
   }
-
-  // free up the array of directory entries
-  delete[] m_entries;
 }
 
 // Static method
@@ -128,16 +97,16 @@ void DirectoryMemory::printConfig(ostream& out)
 {
   out << "Memory config:" << endl;
   out << "  memory_bits: " << RubyConfig::memorySizeBits() << endl;
-  out << "  memory_size_bytes: " << RubyConfig::memorySizeBytes() << endl; 
+  out << "  memory_size_bytes: " << RubyConfig::memorySizeBytes() << endl;
   out << "  memory_size_Kbytes: " << double(RubyConfig::memorySizeBytes()) / (1<<10) << endl;
   out << "  memory_size_Mbytes: " << double(RubyConfig::memorySizeBytes()) / (1<<20) << endl;
   out << "  memory_size_Gbytes: " << double(RubyConfig::memorySizeBytes()) / (1<<30) << endl;
 
   out << "  module_bits: " << RubyConfig::memoryModuleBits() << endl;
-  out << "  module_size_lines: " << RubyConfig::memoryModuleBlocks() << endl; 
-  out << "  module_size_bytes: " << RubyConfig::memoryModuleBlocks() * RubyConfig::dataBlockBytes() << endl; 
-  out << "  module_size_Kbytes: " << double(RubyConfig::memoryModuleBlocks() * RubyConfig::dataBlockBytes()) / (1<<10) << endl; 
-  out << "  module_size_Mbytes: " << double(RubyConfig::memoryModuleBlocks() * RubyConfig::dataBlockBytes()) / (1<<20) << endl; 
+  out << "  module_size_lines: " << RubyConfig::memoryModuleBlocks() << endl;
+  out << "  module_size_bytes: " << RubyConfig::memoryModuleBlocks() * RubyConfig::dataBlockBytes() << endl;
+  out << "  module_size_Kbytes: " << double(RubyConfig::memoryModuleBlocks() * RubyConfig::dataBlockBytes()) / (1<<10) << endl;
+  out << "  module_size_Mbytes: " << double(RubyConfig::memoryModuleBlocks() * RubyConfig::dataBlockBytes()) / (1<<20) << endl;
 }
 
 // Public method
@@ -151,51 +120,29 @@ Directory_Entry& DirectoryMemory::lookup(PhysAddress address)
   assert(isPresent(address));
   Index index = address.memoryModuleIndex();
 
-  int parte= index >> (g_MEMORY_MODULE_BITS - logpartes);
-  index %= m_size;
-  
-  //index&=0x1fffff;
-  
-  cerr << "llamada a lookup de directorymemory" << endl;
-  
-  if(index % m_size  != index & 0x1fffff)  cout << "ALARM" << endl;
-  
-  //if(parte!=0) 
-  if (index < 0 || index > m_size ) {
-    WARN_EXPR(m_chip_ptr->getID()); 
+  if (index < 0 || index > m_size) {
+    WARN_EXPR(m_chip_ptr->getID());
     WARN_EXPR(address.getAddress());
     WARN_EXPR(index);
     WARN_EXPR(m_size);
-    WARN_EXPR(parte);
     ERROR_MSG("Directory Memory Assertion: accessing memory out of range.");
   }
-  
-   if(m_entries[parte]==NULL) 
-   {
-       m_entries[parte] = new Directory_Entry*[m_size];  
-      if (m_entries[parte] == NULL) {
-        ERROR_MSG("Directory Memory: unable to allocate memory.");
-      }
-      for (int i=0; i < m_size; i++) {
-        m_entries[parte][i] = NULL;
-      }
-   }
-    
-  Directory_Entry* entry = m_entries[parte][index];
-  
+  Directory_Entry* entry = m_entries[index];
+
   // allocate the directory entry on demand.
   if (entry == NULL) {
     entry = new Directory_Entry;
+
     //    entry->getProcOwner() = m_chip_ptr->getID(); // FIXME - This should not be hard coded
     //    entry->getDirOwner() = true;        // FIXME - This should not be hard-coded
 
     // load the data from SimICS when first initalizing
+    /*
     if (g_SIMICS) {
       if (DATA_BLOCK) {
         physical_address_t physAddr = address.getAddress();
-        
+
         for(int j=0; j < RubyConfig::dataBlockBytes(); j++) {
-        
           int8 data_byte = (int8) SIMICS_read_physical_memory( m_chip_ptr->getID(),
                                                                physAddr + j, 1 );
           //printf("SimICS, byte %d: %lld\n", j, data_byte );
@@ -204,8 +151,10 @@ Directory_Entry& DirectoryMemory::lookup(PhysAddress address)
         DEBUG_EXPR(NODE_COMP, MedPrio,entry->getDataBlk());
       }
     }
+    */
+
     // store entry to the table
-    m_entries[parte][index] = entry;  
+    m_entries[index] = entry;
   }
 
   return (*entry);
@@ -233,11 +182,10 @@ void DirectoryMemory::invalidateBlock(PhysAddress address)
 void DirectoryMemory::print(ostream& out) const
 {
   out << "Directory dump: " << endl;
-  for(int j=0;  j< partes;j++)
-  for (int i=0; i < m_size; i++) {
-    if (m_entries[j][i] != NULL) {
-      out << i << ": ";
-      out << *m_entries[i] << endl;
+  for (DirectoryMap::const_iterator iEntries = m_entries.begin(); iEntries != m_entries.end(); ++iEntries) {
+    if (iEntries->second != NULL) {
+      out << iEntries->first << ": ";
+      out << *(iEntries->second) << endl;
     }
   }
 }

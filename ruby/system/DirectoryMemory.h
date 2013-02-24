@@ -6,9 +6,9 @@
 
     --------------------------------------------------------------------
 
-    This file is part of the Ruby Multiprocessor Memory System Simulator, 
-    a component of the Multifacet GEMS (General Execution-driven 
-    Multiprocessor Simulator) software toolset originally developed at 
+    This file is part of the Ruby Multiprocessor Memory System Simulator,
+    a component of the Multifacet GEMS (General Execution-driven
+    Multiprocessor Simulator) software toolset originally developed at
     the University of Wisconsin-Madison.
 
     Ruby was originally developed primarily by Milo Martin and Daniel
@@ -19,7 +19,7 @@
     University of Wisconsin was performed by Alaa Alameldeen, Brad
     Beckmann, Jayaram Bobba, Ross Dickson, Dan Gibson, Pacia Harper,
     Derek Hower, Milo Martin, Michael Marty, Carl Mauer, Michelle Moravan,
-    Kevin Moore, Andrew Phelps, Manoj Plakal, Daniel Sorin, Haris Volos, 
+    Kevin Moore, Andrew Phelps, Manoj Plakal, Daniel Sorin, Haris Volos,
     Min Xu, and Luke Yen.
     --------------------------------------------------------------------
 
@@ -56,8 +56,8 @@
 
 /*
  * DirectoryMemory.h
- * 
- * Description: 
+ *
+ * Description:
  *
  * $Id$
  *
@@ -70,6 +70,8 @@
 #include "Address.h"
 #include "Directory_Entry.h"
 
+#include <map>
+
 class Chip;
 
 class DirectoryMemory {
@@ -79,7 +81,7 @@ public:
 
   // Destructor
   ~DirectoryMemory();
-  
+
   // Public Methods
   static void printConfig(ostream& out);
   bool isPresent(PhysAddress address);
@@ -93,16 +95,13 @@ private:
   // Private copy constructor and assignment operator
   DirectoryMemory(const DirectoryMemory& obj);
   DirectoryMemory& operator=(const DirectoryMemory& obj);
-  
+
   // Data Members (m_ prefix)
-  Directory_Entry ***m_entries;
+  typedef std::map<int, Directory_Entry*> DirectoryMap; // WF: for flexible address partitioning
+  DirectoryMap m_entries;
   Chip* m_chip_ptr;
-  int m_size;  // # of memory module blocks for this directory
+  uint64 m_size;  // # of memory module blocks for this directory
   int m_version;
-  
-  //JORGE
-     int partes;
-    int logpartes;
 };
 
 // Output operator declaration
@@ -111,7 +110,7 @@ ostream& operator<<(ostream& out, const DirectoryMemory& obj);
 // ******************* Definitions *******************
 
 // Output operator definition
-extern inline 
+extern inline
 ostream& operator<<(ostream& out, const DirectoryMemory& obj)
 {
   obj.print(out);

@@ -47,7 +47,7 @@
 
 # GEMS_ROOT points to the base of the CVS tree
 #GEMS_ROOT := ..
-GEMS_ROOT=/export/home/jalbe/comun/gems
+GEMS_ROOT=/home/jalbe/comun/gems
 NETWORK = simple
 GARNET = garnet-flexible-pipeline
 GARNET_DETAIL = garnet-fixed-pipeline
@@ -363,5 +363,5 @@ endif
 
 DEP := $(addprefix $(RUBY_OBJ_DIR)/,$(SRC_C:.c=.d) $(SRC_CPP:.C=.d))
 
-#include $(GEMS_ROOT)/common/Makefile.dep
-include /export/home/jalbe/comun/gems/common/Makefile.dep
+include $(GEMS_ROOT)/common/Makefile.dep
+#include /e/home/jalbe/comun/gems/common/Makefile.dep
