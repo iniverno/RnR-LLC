@@ -1,0 +1,10 @@
+read-configuration ../checkpoints/sarek-simicsfs-art02
+instruction-fetch-mode instruction-fetch-trace
+istc-disable
+dstc-disable
+cpu-switch-time 1
+load-module ruby
+ruby0.setparam g_NUM_PROCESSORS 4
+ruby0.setparam g_PROCS_PER_CHIP 4
+ruby0.setparam g_MEMORY_SIZE_BYTES 4294967296
+ruby0.init
