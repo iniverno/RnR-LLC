@@ -6,11 +6,9 @@
 # case there will be multiple headers. You can override the creation
 # of this file with the -no-log flag.
 #
-# Running on atps (Linux 2.6.32-220.4.1.el6.x86_64 x86_64)
-# command-line arguments: -c /export/scratch/users/jalbe/new/cpu2k6-jbb.copied-booted.temp2.8p.merged.conf 
+# Running on atps-n017.atps (Linux 2.6.18-194.8.1.el5 x86_64)
+# command-line arguments: -quiet -no-copyright -batch-mode -e @import sys; print "%d.%d.%d" % sys.version_info[:3]; 
 #
 # Add commands that should run when Simics starts to this file.
 #
-@import sim_commands; sim_commands.read_configuration_cmd(SIM_native_path("/export/scratch/users/jalbe/new/cpu2k6-jbb.copied-booted.temp2.8p.merged.conf"))
-c
-q
+@import sys; print "%d.%d.%d" % sys.version_info[:3];
