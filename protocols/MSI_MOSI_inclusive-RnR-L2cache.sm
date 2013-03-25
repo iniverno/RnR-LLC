@@ -3499,8 +3499,9 @@ transition(L2_NRSS, {L1_GETS, L1_GET_INSTR}, L2_NRSS_IS) {
 	i_allocateTBE;
 	//k_dataFromL2CacheToL1Requestor
 	ddd_setPendingIntAcksToOne;
-	jsr_setReused;
+	
 	fjj_insertionDataArray;
+	jsr_setReused;
 	set_setMRU;
 	setTimeLast;
 	jg_issueDownGradeSmallestL1copyRequest;  // Order with respect to nn_addSharer is important!!!!
@@ -3557,13 +3558,14 @@ transition(L2_NRSS, L1_UPGRADE_no_others, L2_NRMT) {
 }
 
 transition(L2_NRSS, L1_GETX, L2_MV) {
-    jsr_setReused;
+    
     i_allocateTBE;  // for both ext. and int.
     xx_recordGetXL1ID;
     bbb_setPendingIntAcksToSharers;
     vv_issueInvalidateOtherIntL1copiesRequest;  // for internal
     set_setMRU;
     fjj_insertionDataArray;
+    jsr_setReused;
     setTimeLast;
     nn_addSharer;
     //b_issueGETX;  // for data
@@ -3574,13 +3576,14 @@ transition(L2_NRSS, L1_GETX, L2_MV) {
 
 transition(L2_NRSS, L1_UPGRADE, L2_MV) {
     uu_profileAccess;
-    jsr_setReused;
+    
     i_allocateTBE;  // for both ext. and int.
     xx_recordGetXL1ID;
     ccc_setPendingIntAcksMinusOne;
     vv_issueInvalidateOtherIntL1copiesRequest;  // for internal
     set_setMRU;
     fjj_insertionDataArray;
+    jsr_setReused;
     setTimeLast;
     nn_addSharer;
     //b_issueGETX;  // for data
@@ -3635,8 +3638,9 @@ transition(L2_NRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
 	i_allocateTBE;  
 	a_issueGETS;
 	ss_recordGetSL1ID;
-	jsr_setReused;
+	
 	fjj_insertionDataArray;
+	jsr_setReused;
 	jjj_statsPrefetchLocal; 
 	jjj_statsPrefetchLocalS;
     
@@ -3649,12 +3653,13 @@ transition(L2_NRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
 
 
 transition(L2_NRS, L1_GETX, L2_IM) {
-    jsr_setReused;
+    
     jjj_statsPrefetchLocal;
     jjj_statsPrefetchLocalS;
     
     set_setMRU;
     fjj_insertionDataArray;
+    jsr_setReused;
     nn_addSharer;
     setTimeLast;
 	i_allocateTBE;
@@ -3794,13 +3799,14 @@ transition(L2_NRMT, L2_Replacement, L2_NRMIV) {
 }
 
 transition(L2_NRMT, {L1_GETS, L1_GET_INSTR}, L2_MO) {
-    jsr_setReused;
+    
     i_allocateTBE;
     bbb_setPendingIntAcksToSharers;
     g_issueDownGradeIntL1copiesRequest;
     ss_recordGetSL1ID;
     set_setMRU;
     fjj_insertionDataArray;
+    jsr_setReused;
     setTimeLast;
     nn_addSharer;
     uu_profileDataMiss;
@@ -3808,12 +3814,13 @@ transition(L2_NRMT, {L1_GETS, L1_GET_INSTR}, L2_MO) {
 }
 
 transition(L2_NRMT, L1_GETX, L2_MIT) {
-    jsr_setReused;
+    
     i_allocateTBE;
     bbb_setPendingIntAcksToSharers;
     v_issueInvalidateIntL1copyRequest;
     set_setMRU;
     fjj_insertionDataArray;
+    jsr_setReused;
     setTimeLast;
     nn_addSharer;
     xx_recordGetXL1ID;

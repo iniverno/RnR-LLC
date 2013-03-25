@@ -307,6 +307,9 @@ private:
   
   Vector<uint64> m_nH [3];
   
+  Vector<uint64> m_firstInsertions;
+  Vector<uint64> m_secondInsertions;
+
   Histogram  *m_histoReuse;
   Histogram  *m_histoReuseThread[16];
   
@@ -470,13 +473,19 @@ CacheMemory<ENTRY>::CacheMemory(AbstractChip* chip_ptr, int numSetBits,
   	m_nLast[i] = 0;
   }
   
-  	for (int i = 0; i < 3; i++) m_nH[i].setSize(RubyConfig::numberOfProcsPerChip());
-	
+  for (int i = 0; i < 3; i++) m_nH[i].setSize(RubyConfig::numberOfProcsPerChip());
+
+  m_firstInsertions.setSize(RubyConfig::numberOfProcsPerChip());
+  m_secondInsertions.setSize(RubyConfig::numberOfProcsPerChip());
+
   for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) {
   	for (int j = 0; j < 3; j++) m_nH[j][i]= 0;
-
+  	m_firstInsertions[i] = 0;
+  	m_secondInsertions[i] = 0;
   }
   
+
+
     m_histoReuse = new Histogram(1, 500);
   for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) m_histoReuseThread[i] = new Histogram(1, 500);
 
@@ -932,6 +941,9 @@ int CacheMemory<ENTRY>::insertionDataArray(const Address& address)
   if(!g_DATA_FIFO) assert(!((CacheMemory*) dataArray)->isTagPresent(address));
   DEBUG_EXPR(CACHE_COMP, HighPrio, address);	
 	
+  if(lookup(address).m_reused) m_secondInsertions[0]++;
+  else m_firstInsertions[0]++;
+
   lookup(address).m_timeLoad = g_eventQueue_ptr->getTime();
   
   
@@ -1300,7 +1312,18 @@ void CacheMemory<ENTRY>::printTemp(const Address& address)
 template<class ENTRY>
 inline 
 void CacheMemory<ENTRY>::printReuseCommand()
-{ 
+{
+
+  uint64 auxTotalFirstInsertions = 0;
+  uint64 auxTotalSecondInsertions = 0;
+  for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++) {
+    cerr  << "insertions_core_" << i << ":\t" <<  m_firstInsertions << endl;
+    auxTotalFirstInsertions += m_firstInsertions[i];
+    auxTotalSecondInsertions += m_secondInsertions[i];
+  }
+  cerr << "total_first_insertions:\t" << 	auxTotalFirstInsertions << endl;
+  cerr << "total_second_insertions:\t" << 	auxTotalSecondInsertions << endl;
+
   cerr << "Reuse patterns per core:" ;
   for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++)
   {
