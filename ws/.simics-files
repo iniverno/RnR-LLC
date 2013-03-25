@@ -1,4 +1,4 @@
 /home/gaz/jalbe/scripts/copia-parsec.simics
-/home/gaz/jalbe/gems/gems/ws/targets/serengeti/abisko-sol10.state
-/home/gaz/jalbe/checkpoints/cpu2k6-copied.state
-/export/scratch/users/jalbe/checkpoints/abisko-sol10-8p.state
+/export/scratch/users/jalbe/checkpoints/serengeti/abisko-sol10.state
+/export/scratch/users/jalbe/tmp/estado-disco-SPEC2K6-20120227.craff
+/export/scratch/users/jalbe/tmp/estado-pers.SPEC-PARSEC.state

@@ -8997,3 +8997,15 @@ c
 con0.input("ls /mnt/new/lib/stlport4\n")
 c
 q
+q
+q
+q
+q
+q
+c
+prefs->swap_dir = /export/scratch/users/jalbe/tmp
+hfs0.root 
+c
+q
+c
+q

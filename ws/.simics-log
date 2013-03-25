@@ -6,35 +6,9 @@
 # case there will be multiple headers. You can override the creation
 # of this file with the -no-log flag.
 #
-# Running on atps (Linux 2.6.32-220.4.1.el6.x86_64 x86_64)
-# command-line arguments: -stall -c cpu2k6-parsec21.booted-mounted.conf -no-win 
+# Running on atps-n017.atps (Linux 2.6.18-194.8.1.el5 x86_64)
+# command-line arguments: -quiet -no-copyright -batch-mode -e @import sys; print "%d.%d.%d" % sys.version_info[:3]; 
 #
 # Add commands that should run when Simics starts to this file.
 #
-@import sim_commands; sim_commands.read_configuration_cmd(SIM_native_path("cpu2k6-parsec21.booted-mounted.conf"))
-c
-con0.input("echo $LD_LIBRARY_PATH\n")
-c
-con0.input("ls /lib\n")
-c
-con0.input("ls /usr/lib\n")
-c
-con0.input("ls /usr/\n")
-c
-con0.input("ls /usr/local\n")
-c
-con0.input("ls /usr/lib/libstl*\n")
-c
-con0.input("ls /lib/libstl*\n")
-c
-con0.input("ls /usr/local/lib/libstl*\n")
-c
-con0.input("/lib64/libstl*\n")
-c
-con0.input("ls /mnt/new\n")
-c
-con0.input("ls /mnt/new/lib\n")
-c
-con0.input("ls /mnt/new/lib/stlport4\n")
-c
-q
+@import sys; print "%d.%d.%d" % sys.version_info[:3];
