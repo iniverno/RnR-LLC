@@ -215,6 +215,8 @@ void Profiler::wakeup()
 
   for(int i=0; i < RubyConfig::numberOfProcessors(); i++) {
     perProcInstructionCount[i] = g_system_ptr->getDriver()->getInstructionCount(i) - m_instructions_executed_at_start[i] + 1;
+    m_L2_cache_profiler_ptr->m_perProcInstructionCount[i] = perProcInstructionCount[i];
+    
     perProcCycleCount[i] = g_system_ptr->getDriver()->getCycleCount(i) - m_cycles_executed_at_start[i] + 1;
     // The +1 allows us to avoid division by zero
   }
@@ -1230,7 +1232,18 @@ void Profiler::addL2dataMissStatSample(GenericRequestType requestType, AccessMod
     m_perProcUserMisses[id]++;
   }
   m_L2_cache_profiler_ptr->addStatSample(requestType, type, msgSize, pfBit, id, true);
+}
 
+void Profiler::addSecondaryStatHitTag(NodeID id) {
+    m_L2_cache_profiler_ptr->addStatHitTag(id);
+}
+
+void Profiler::addSecondaryStatHitData(NodeID id) {
+    m_L2_cache_profiler_ptr->addStatHitData(id);
+}
+
+void Profiler::addSecondaryStatFirstInsertion(NodeID id) {
+    m_L2_cache_profiler_ptr->addStatFirstInsertion(id);
 }
 
 void Profiler::addL1DStatSample(const CacheMsg& msg, NodeID id)

@@ -105,7 +105,6 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     L2_IM, desc="L2 idle, issued GETX, no valid int L1, have not seen response(s) yet";
     L2_IMO, desc="L2 idle, issued GETX, saw forwarded GETS";
     L2_IMI, desc="L2 idle, issued GETX, saw forwarded GETX";
-    L2_IMZ, desc="L2 idle, issued GETX, saw another L1_GETX";
     L2_IMOI, desc="L2 idle, issued GETX, saw GETS, saw forwarded GETX";
     L2_IMOZ, desc="L2 idle, issued GETX, saw GETS, then a L1_GETX";
 
@@ -170,6 +169,10 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     L2_NRS, desc="";
     L2_NRSS, desc="";
     L2_NRMT, desc="";
+    
+    L2_NRMV, desc="";
+    L2_NRMVD, desc="";
+    L2_NRMO, desc="";
   }
 
   // EVENTS
@@ -228,6 +231,10 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     // the directory must be told that we now have the data
     Data_ext_ack_not_0_last, "Data ack not 0 last", desc="Data with ack count != 0 after having received all acks";
 
+	//NCID
+	Data_ext_ack_0_no, "Data ack 0", desc="Data with ack count = 0 (no insertion)";
+    Data_ext_ack_not_0_last_no, "Data ack not 0 last", desc="Data with ack count != 0 after having received all acks (no insertion)";
+	
     Dir_WB_ack, "WB ack", desc="Writeback ack from dir";
     Dir_exe_ack, "Only copy", desc="Directory tells us we already have exclusive permission, go directly to MT state";
     
@@ -314,11 +321,12 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     bool wasTagPresent(Address);
     void setTimeLast(Address);
 	void addReused(Address);
-	void initialTouch(Address, NodeID);
+	void initialTouch(Address, NodeID, int);
     void evictDataArray(Address);
     int insertionDataArray(Address);
     void setReuseInDataArray(Address);
-    void setReuseInDataArray(int);
+//    void setReuseInDataArray(int);
+    bool shouldInsert(Address, NodeID);
   }
 
   external_type(TBETable) {
@@ -621,10 +629,14 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
         DEBUG_EXPR(in_msg.NumPendingExtAcks);
         // test wether it's from a local L1 or an off chip source
         //assert(in_msg.Destination.isElement(machineID));
-        
         assert(in_msg.Type == CoherenceResponseType:DATA);
         assert(in_msg.NumPendingExtAcks == 0);          
-        trigger(Event:Data_ext_ack_0, in_msg.Address);  // L2 now has data and all off-chip acks                   
+        if(getState(in_msg.Address)==State:L2_IS || getState(in_msg.Address)==State:L2_IM || L2cacheMemory.shouldInsert(in_msg.Address,  L1CacheMachIDToProcessorNum(L2cacheMemory[in_msg.Address].Sharers.smallestElement(MachineType:L1Cache)))) {
+			trigger(Event:Data_ext_ack_0, in_msg.Address);  // L2 now has data and all off-chip acks
+		}
+		else {
+			trigger(Event:Data_ext_ack_0_no, in_msg.Address);  // L2 now has data and all off-chip acks
+		}                   
       }
     }  // if not ready, do nothing
   }
@@ -789,6 +801,11 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     }
   }
 
+  action(b_issueGETXfromTBE, "gXT", desc="Issue GETX") {
+        L2cacheMemory[address].owner := L2_TBEs[address].L1_GetX_ID;       
+        dram.i_request(address, 1, L2_TBEs[address].L1_GetX_ID, L2_TBEs[address].L1_GetX_ID);      
+  }
+  
   action(f_issueGETINSTR, "f", desc="Issue GETINSTR") {
     peek(L1RequestIntraChipL2Network_in, RequestMsg) {
       L2cacheMemory[address].owner := in_msg.RequestorMachId;
@@ -1408,26 +1425,12 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   action(uu_profileDataMiss, "\du", desc="Profile the demand data miss") {
     peek(L1RequestIntraChipL2Network_in, RequestMsg) {
       profile_L2Cache_dataMiss(convertToGenericType(in_msg.Type), in_msg.AccessMode, MessageSizeTypeToInt(in_msg.MessageSize), in_msg.Prefetch, L1CacheMachIDToProcessorNum(in_msg.RequestorMachId));
-      profile_hitTagL3(L1CacheMachIDToProcessorNum(in_msg.RequestorMachId));
     }
   }
   
   action(uu_profileAccess, "\jjju", desc="Profile an access") {
     peek(L1RequestIntraChipL2Network_in, RequestMsg) {
       profile_accessL3(in_msg.AccessMode, L1CacheMachIDToProcessorNum(in_msg.RequestorMachId));
-    }
-  }
-  
-  action(uu_profileDataHit, "\djju", desc="Profile an access") {
-    peek(L1RequestIntraChipL2Network_in, RequestMsg) {
-      profile_hitDataL3(L1CacheMachIDToProcessorNum(in_msg.RequestorMachId));
-      profile_hitTagL3(L1CacheMachIDToProcessorNum(in_msg.RequestorMachId));
-    }
-  }
-  
-  action(uu_profileTagHit, "\tjju", desc="Profile an access") {
-    peek(L1RequestIntraChipL2Network_in, RequestMsg) {
-      profile_hitTagL3(L1CacheMachIDToProcessorNum(in_msg.RequestorMachId));
     }
   }
 
@@ -1913,18 +1916,63 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
 	}
   }
 
-  action(jjit_initialTouch, "\jjit", desc="") {
-		peek(L1RequestIntraChipL2Network_in, RequestMsg) {
-			L2cacheMemory.initialTouch(address, L1CacheMachIDToProcessorNum(in_msg.RequestorMachId));
+  action(jjit_initialTouch_i0, "\jjit0", desc="") {
+		peek(responseIntraChipL2Network_in, ResponseMsg) {
+			if(L2_TBEs[address].L1_GetS_IDs.isEmpty()) {
+				L2cacheMemory.initialTouch(address, L1CacheMachIDToProcessorNum(L2_TBEs[address].L1_GetX_ID), 0);
+			}
+			else {
+				L2cacheMemory.initialTouch(address, L1CacheMachIDToProcessorNum(L2_TBEs[address].L1_GetS_IDs.smallestElement(MachineType:L1Cache)), 0);
+			}
 		}
   }
 
-  action(fjj_insertionDataArray, "\fjj_i", desc="") {
-		peek(L1RequestIntraChipL2Network_in, RequestMsg) {
-			L2cacheMemory[address].posFIFO := L2cacheMemory.insertionDataArray(address);
-			if(L2cacheMemory[address].reused == false) {
-			    profile_dataFirstInsertionL3(L1CacheMachIDToProcessorNum(in_msg.RequestorMachId));
+  action(jjit_initialTouch_i1, "\jjit1", desc="") {
+		peek(responseIntraChipL2Network_in, ResponseMsg) {
+			if(L2_TBEs[address].L1_GetS_IDs.isEmpty()) {
+				L2cacheMemory.initialTouch(address, L1CacheMachIDToProcessorNum(L2_TBEs[address].L1_GetX_ID), 1);
 			}
+			else {
+				L2cacheMemory.initialTouch(address, L1CacheMachIDToProcessorNum(L2_TBEs[address].L1_GetS_IDs.smallestElement(MachineType:L1Cache)), 0);
+			}
+		}
+  }
+  
+    action(jjit_initialTouch_e0, "\jjite0", desc="") {
+		peek(responseDram_in, ResponseMsg) {
+			if(L2_TBEs[address].L1_GetS_IDs.isEmpty()) {
+				L2cacheMemory.initialTouch(address, L1CacheMachIDToProcessorNum(L2_TBEs[address].L1_GetX_ID), 0);
+			}
+			else {
+				L2cacheMemory.initialTouch(address, L1CacheMachIDToProcessorNum(L2_TBEs[address].L1_GetS_IDs.smallestElement(MachineType:L1Cache)), 0);
+			}
+		}
+  }
+
+  action(jjit_initialTouch_e1, "\jjite1", desc="") {
+		peek(responseDram_in, ResponseMsg) {
+			if(L2_TBEs[address].L1_GetS_IDs.isEmpty()) {
+				L2cacheMemory.initialTouch(address, L1CacheMachIDToProcessorNum(L2_TBEs[address].L1_GetX_ID), 1);
+			}
+			else {
+				L2cacheMemory.initialTouch(address, L1CacheMachIDToProcessorNum(L2_TBEs[address].L1_GetS_IDs.smallestElement(MachineType:L1Cache)), 1);
+			}
+		}
+  }
+  
+  action(jjit_initialTouch2, "\jjit2", desc="") {
+		peek(L1RequestIntraChipL2Network_in, RequestMsg) {
+			L2cacheMemory.initialTouch(address, L1CacheMachIDToProcessorNum(in_msg.RequestorMachId), 2);
+		}
+  }
+  
+  action(fjj_insertionDataArray, "\fjj_i", desc="") {
+			L2cacheMemory[address].posFIFO := L2cacheMemory.insertionDataArray(address);
+  }
+  
+  action(fjj_insertionDataArrayFromDram, "\iDAD", desc="") {
+		peek(responseDram_in, ResponseMsg) {
+			L2cacheMemory[address].posFIFO := L2cacheMemory.insertionDataArray(address);
 		}
   }
   
@@ -1936,7 +1984,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   
   action(jrdr_setReuseInDataArray, "\jr_dr", desc="") {
 		peek(L1RequestIntraChipL2Network_in, RequestMsg) {
-			L2cacheMemory.setReuseInDataArray(address);
+			L2cacheMemory.setReuseInDataArray(in_msg.Address);
 		}
   }
   
@@ -1983,30 +2031,30 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   //  z_stall;
   //}
 
-  transition({L2_IS, L2_IPS,L2_IPX, L2_IPXZ ,L2_ISZ, L2_ISI, L2_IMV, L2_MV, L2_IM, L2_IMO, L2_IMI, L2_IMZ, L2_IMOI, L2_IMOZ, 
+  transition({L2_IS, L2_IPS,L2_IPX, L2_IPXZ ,L2_ISZ, L2_ISI, L2_IMV, L2_MV, L2_IM, L2_IMO, L2_IMI, L2_IMOI, L2_IMOZ, 
                 L2_SIV, L2_PSIV, L2_SIC, 
                 L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
                 L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
-                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS}, 
+                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS, L2_NRMV, L2_NRMVD, L2_NRMO}, 
   {L2_Replacement, L2_PrefetchS_Replacement, L2_PrefetchX_Replacement}) {
     //xr_recycleResponse;
     x_recycleRequest;
   }
 
-  transition({L2_IS, L2_IPS,L2_IPX, L2_IPXZ ,L2_ISZ, L2_ISI, L2_IMV, L2_MV, L2_IM, L2_IMO, L2_IMI, L2_IMZ, L2_IMOI, L2_IMOZ, 
+  transition({L2_IS, L2_IPS,L2_IPX, L2_IPXZ ,L2_ISZ, L2_ISI, L2_IMV, L2_MV, L2_IM, L2_IMO, L2_IMI, L2_IMOI, L2_IMOZ, 
                 L2_SIV, L2_PSIV, L2_SIC, 
                 L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
                 L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
-                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS}, 
+                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS, L2_NRMV, L2_NRMVD, L2_NRMO}, 
   {L1_PUTX, L1_PUTX_last, L1_PUTS, L1_PUTS_last, L1_PUTX_old, L1_PUTS_old}) {
     x_recycleRequest;
   }
 
-  transition({L2_IS, L2_IPS,L2_IPX, L2_IPXZ ,L2_ISZ, L2_ISI, L2_IMV, L2_MV, L2_IM, L2_IMO, L2_IMI, L2_IMZ, L2_IMOI, L2_IMOZ, 
+  transition({L2_IS, L2_IPS,L2_IPX, L2_IPXZ ,L2_ISZ, L2_ISI, L2_IMV, L2_MV, L2_IM, L2_IMO, L2_IMI, L2_IMOI, L2_IMOZ, 
                 L2_SIV, L2_PSIV, L2_SIC, 
                 L2_MIV, L2_PMIV, L2_MIN, L2_PMIN, L2_MIC, L2_MIT, L2_MO, L2_MOIC, L2_MOICR, L2_MOZ, 
                 L2_OIV, L2_OIN, L2_POIV, L2_POIN, L2_OIC, L2_OMV, L2_OM, L2_SM, L2_SSM, L2_SSMV, 
-                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS}, 
+                L2_INRS, L2_INRSI,L2_INRSZ, L2_NRSIV, L2_INRM, L2_INRMZ, L2_NRMIT, L2_NRMIV, L2_NRSS_IS, L2_NRMV, L2_NRMVD, L2_NRMO}, 
   {Data_replacement}) {
     xd_recycleDataRepl;
   }
@@ -2040,10 +2088,8 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   
 transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
     uu_profileAccess;
-    jjj_statsPrefetchLocal3;
     qq_allocateL2CacheBlock;
-    jjpc_savePC;
-	jjit_initialTouch;
+	jjit_initialTouch2;
 	
     ll_clearSharers;
     nn_addSharer;
@@ -2062,23 +2108,19 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   transition({L2_NP,L2_I}, {L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}, L2_INRM) {  // UPGRADE possible because L2_Replacement have higher priority
     uu_profileAccess;
     qq_allocateL2CacheBlock;
-        jjpc_savePC;
-	jjit_initialTouch;
+    jjpc_savePC;
+	jjit_initialTouch2;
     ll_clearSharers;
-    //set_setMRU;
     nn_addSharer;
     i_allocateTBE;
     xx_recordGetXL1ID;
     b_issueGETX;
     jaa_missToPrefetch;
-    jjj_statsPrefetchLocal3;
     uu_profileMiss;
     
     jj_popL1RequestQueue2;
   }
   
-
-
 
 /*****************************************************************/
   // Transitions from L2_IS
@@ -2091,7 +2133,9 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   transition(L2_IS, Data_ext_ack_0, L2_SS) {
     u_writeDataFromResponseQueueToL2Cache;
     h_issueLoadHit;
+    jjit_initialTouch_e1;
     //c_finalAckToDirIfNeeded;
+    fjj_insertionDataArrayFromDram;
     s_deallocateTBE;
     jjj_popResponeDramQueue;
   }
@@ -2100,7 +2144,6 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
     
     ww_profileMissNoDir;
     set_setMRU;
-    jrdr_setReuseInDataArray;
     nn_addSharer;
     setTimeLast;
     ss_recordGetSL1ID;
@@ -2137,57 +2180,48 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
     //z_stall;
     x_recycleRequest;
   }
-  
-  // Transitions from L2_IMV, waiting for int_acks
-  // currently stall all request 
+
+
+  // Transitions from L2_IM, waiting for external data before going to MT state
   // could see forwards and/or more L1 requests
-  transition(L2_IMV, L2_INV) {  // could see an invalidate for SS
-    yy_recordInvalidatorID;
+  transition(L2_IM, L2_INV) {  // could see an invalidate from the directory (earlier epoch)
+    t_sendAckToInvalidator;
     l_popForwardedRequestQueue;
   }
 
-  // stall all Forwarded request
-  transition(L2_IMV, {Forwarded_GETS, Forwarded_GET_INSTR, Forwarded_GETX, Forwarded_PREFS, Forwarded_PREFX}) {
-    z_stall;
+  transition(L2_IM, {L1_GETS,L1_GET_INSTR}, L2_IMO) {
+    ww_profileMissNoDir;
+    set_setMRU;
+    nn_addSharer;
+    setTimeLast;
+    ss_recordGetSL1ID;
+    jj_popL1RequestQueue2;
   }
 
-  // stall all L1 request
-  transition(L2_IMV, {L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
+
+  //transition(L2_IM, L1_GETX, L2_IMZ) {  // don't go there, just go to stall state
+  transition(L2_IM, L1_GETX) {  // don't go there, just go to stall state
     //z_stall;
     x_recycleRequest;
-  }  
-
-  transition(L2_IMV, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MV) {
+  }
+  
+  transition(L2_IM, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MT) {
     u_writeDataFromResponseQueueToL2Cache;
+    jjit_initialTouch_e1;
+    hh_issueStoreHit;
+    fjj_insertionDataArrayFromDram;
     //c_finalAckToDirIfNeeded;
+    s_deallocateTBE;
     jjj_popResponeDramQueue;
   }
 
-  transition(L2_IMV, Data_ext_ack_not_0) {
+  transition(L2_IM, Data_ext_ack_not_0) {
     u_writeDataFromResponseQueueToL2Cache;
     p_addNumberOfPendingExtAcks;
     mm_rememberIfFinalAckNeeded;
     jjj_popResponeDramQueue;
   }
 
-
-  transition(L2_IMV, Proc_int_ack) {
-    aa_removeResponseSharer;
-    r_decrementNumberOfPendingIntAcks;
-    o_popIncomingResponseQueue;
-  }
-
-  transition(L2_IMV, Proc_last_int_ack, L2_IM) {
-    aa_removeResponseSharer;
-    r_decrementNumberOfPendingIntAcks;
-    o_popIncomingResponseQueue;
-    zz_sendAckToQueuedInvalidator;
-  }
-
-  // Transitions from L2_MV, waiting for int_acks
-  // external world gave us write permission
-
- 
 
   // stall all L1 request
   transition(L2_MV, {L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
@@ -2210,95 +2244,17 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
     o_popIncomingResponseQueue;
   }
 
-  // Transitions from L2_IM, waiting for external data before going to MT state
-  // could see forwards and/or more L1 requests
-  transition(L2_IM, L2_INV) {  // could see an invalidate from the directory (earlier epoch)
-    t_sendAckToInvalidator;
-    l_popForwardedRequestQueue;
-  }
-
-  transition(L2_IM, {Forwarded_GETS,Forwarded_GET_INSTR}, L2_IMO) {  // could see Forwards, if directory responses get out-of-order
-    dd_recordGetSForwardID;
-    l_popForwardedRequestQueue;
-  }
-  
-  transition(L2_IM, {Forwarded_PREFS}, L2_IMO) {  // could see Forwards, if directory responses get out-of-order
-    dd_recordGetSForwardID;
-    l_popForwardedRequestQueue;
-  }
-
-  transition(L2_IM, {L1_GETS,L1_GET_INSTR}, L2_IMO) {
-    ww_profileMissNoDir;
-    set_setMRU;
-    jrdr_setReuseInDataArray;
-    nn_addSharer;
-    setTimeLast;
-    ss_recordGetSL1ID;
-    jj_popL1RequestQueue2;
-  }
-
-  transition(L2_IM, Forwarded_GETX, L2_IMI) {  // could see Forwards, if directory requests get ahead of responses 
-    ii_recordGetXForwardID;
-    l_popForwardedRequestQueue;
-  }
-
-  //transition(L2_IM, L1_GETX, L2_IMZ) {  // don't go there, just go to stall state
-  transition(L2_IM, L1_GETX) {  // don't go there, just go to stall state
-    //z_stall;
-    x_recycleRequest;
-  }
-  transition(L2_IM, Forwarded_PREFX, L2_IMZ) {  // don't go there, just go to stall state
-    z_stall;
-  }
-  
-  
-  transition(L2_IM, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MT) {
-    u_writeDataFromResponseQueueToL2Cache;
-    hh_issueStoreHit;
-    //c_finalAckToDirIfNeeded;
-    s_deallocateTBE;
-    jjj_popResponeDramQueue;
-  }
-
-  transition(L2_IM, Data_ext_ack_not_0) {
-    u_writeDataFromResponseQueueToL2Cache;
-    p_addNumberOfPendingExtAcks;
-    mm_rememberIfFinalAckNeeded;
-    jjj_popResponeDramQueue;
-  }
-
- 
-
 
   // transitions from L2_IMO
   transition(L2_IMO, L2_INV) {  // could see an invalidate from the directory (earlier epoch)
     t_sendAckToInvalidator;
     l_popForwardedRequestQueue;
   }
-
-  transition(L2_IMO, {Forwarded_GETS,Forwarded_GET_INSTR}) {  // could see Forwards
-    dd_recordGetSForwardID;
-    l_popForwardedRequestQueue;
-  }
   
-  transition(L2_IMO, {Forwarded_PREFS}) {  // could see Forwards
-    dd_recordGetSForwardID;
-    l_popForwardedRequestQueue;
-  }
-
-  transition(L2_IMO, Forwarded_GETX, L2_IMOI) {  // could see Forwards
-    ii_recordGetXForwardID;
-    l_popForwardedRequestQueue;
-  }
-  
-  transition(L2_IMO, Forwarded_PREFX, L2_IMOI) {  // could see Forwards
-   z_stall;
-  }
   
   transition(L2_IMO, {L1_GETS,L1_GET_INSTR}) {
     ww_profileMissNoDir;
     set_setMRU;
-    jrdr_setReuseInDataArray;
     nn_addSharer;
     setTimeLast;
     ss_recordGetSL1ID;
@@ -2316,10 +2272,21 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
     u_writeDataFromResponseQueueToL2Cache;
     cc_issueStoreHitDG;
     ddd_setPendingIntAcksToOne;
+    //Note: No insertion because the owner L1 is sending the data and it will be inserted
+    // on L2_MO when data_int arrives
+    //NCID fjj_insertionDataArrayFromDram;
     //c_finalAckToDirIfNeeded;  
     jjj_popResponeDramQueue;
   }
 
+  transition(L2_IMO, {Data_ext_ack_0_no, Data_ext_ack_not_0_last_no}, L2_NRMO) {
+    u_writeDataFromResponseQueueToL2Cache;
+    cc_issueStoreHitDG;
+    ddd_setPendingIntAcksToOne;
+    //c_finalAckToDirIfNeeded;  
+    jjj_popResponeDramQueue;
+  }
+  
   transition(L2_IMO, Data_ext_ack_not_0) {
     u_writeDataFromResponseQueueToL2Cache;
     p_addNumberOfPendingExtAcks;
@@ -2327,121 +2294,8 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
     jjj_popResponeDramQueue;
   }
 
- 
-
- 
-  // transitions from L2_IMI
-  // the directory put us in this state so it should tell us nothing (i.e. don't worry about INV or Forwards)
-  // stall all L1 request
-  transition(L2_IMI, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MIC) {
-    u_writeDataFromResponseQueueToL2Cache;
-    pp_issueStoreHitInv;
-    ddd_setPendingIntAcksToOne;
-    //c_finalAckToDirIfNeeded;
-    jjj_popResponeDramQueue;
-  }
-
-  transition(L2_IMI, Data_ext_ack_not_0) {
-    u_writeDataFromResponseQueueToL2Cache;
-    p_addNumberOfPendingExtAcks;
-    mm_rememberIfFinalAckNeeded;
-    jjj_popResponeDramQueue;
-  }
-
-
-  transition(L2_IMI, {L1_GETS, L1_GET_INSTR, L1_GETX}) {  // stall all L1 requests
-    //z_stall;
-    x_recycleRequest;
-  }
+   
   
-  
-  // transistions from L2_IMZ
-  // just wait for all acks and data
-  // stall on all requests
-  // NOTE: A performance option might be possible to go into M state instead of MT
-  transition(L2_IMZ, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MT) {
-    u_writeDataFromResponseQueueToL2Cache;
-    hh_issueStoreHit;
-    //c_finalAckToDirIfNeeded;
-    s_deallocateTBE;
-    jjj_popResponeDramQueue;
-  }
-
-  transition(L2_IMZ, Data_ext_ack_not_0) {
-    u_writeDataFromResponseQueueToL2Cache;
-    p_addNumberOfPendingExtAcks;
-    mm_rememberIfFinalAckNeeded;
-    jjj_popResponeDramQueue;
-  }
-
- 
-  transition(L2_IMZ, L2_INV) {  // could see an invalidate from the directory (earlier epoch)
-    t_sendAckToInvalidator;
-    l_popForwardedRequestQueue;
-  }
-
-  transition(L2_IMZ, {Forwarded_GETS, Forwarded_PREFS,Forwarded_PREFX, Forwarded_GET_INSTR, Forwarded_GETX, L1_GETS, L1_GET_INSTR, L1_GETX}) {
-    //z_stall;
-    x_recycleRequest;
-  }
-
-
-  
-  // transitions from L2_IMOI
-  // the directory put us in this state so it should tell us nothing (i.e. don't worry about INV or Forwards)
-  // stall all L1 requests
-  transition(L2_IMOI, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MOICR) {
-    u_writeDataFromResponseQueueToL2Cache;
-    pp_issueStoreHitInv;
-    ddd_setPendingIntAcksToOne;
-    //c_finalAckToDirIfNeeded;
-    jjj_popResponeDramQueue;
-  }
-
-  transition(L2_IMOI, Data_ext_ack_not_0) {
-    u_writeDataFromResponseQueueToL2Cache;
-    p_addNumberOfPendingExtAcks;
-    mm_rememberIfFinalAckNeeded;
-    jjj_popResponeDramQueue;
-  }
-
-  transition(L2_IMOI, {L1_GETS, L1_GET_INSTR, L1_GETX}) {  // stall all L1 requests
-    //z_stall;
-    x_recycleRequest;
-  }
-  
-  transition(L2_IMOI, PrefetchS) { 
-    jjj_popPrefetchQueue;
-  }
-
-  // transitions from L2_IMOZ
-  // just wait for all acks and data
-  // stall on all requests
-  transition(L2_IMOZ, L2_INV) {  // could see an invalidate from the directory (earlier epoch)
-    t_sendAckToInvalidator;
-    l_popForwardedRequestQueue;
-  }
-
-  transition(L2_IMOZ, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MOZ) {
-    u_writeDataFromResponseQueueToL2Cache;
-    cc_issueStoreHitDG;
-    ddd_setPendingIntAcksToOne;
-    //c_finalAckToDirIfNeeded;
-    jjj_popResponeDramQueue;
-  }
-
-  transition(L2_IMOZ, Data_ext_ack_not_0) {
-    u_writeDataFromResponseQueueToL2Cache;
-    p_addNumberOfPendingExtAcks;
-    mm_rememberIfFinalAckNeeded;
-    jjj_popResponeDramQueue;
-  }
-
- // stall on all requests
-  transition(L2_IMOZ, {Forwarded_GETS,Forwarded_PREFS, Forwarded_PREFX, Forwarded_GET_INSTR, Forwarded_GETX, L1_GETS, L1_GET_INSTR, L1_GETX}) {
-    //z_stall;
-    x_recycleRequest;
-  }
   
   // ===============================================
   // BASE STATE - S
@@ -2485,9 +2339,8 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
     nn_addSharer;
     setTimeLast;
     k_dataFromL2CacheToL1Requestor;
-    jab_firstUseToPrefetcherS;
-    jjj_hitOnPrefetchedWay0;  //miramos si tenemos un acierto sobre una prebusqueda en el way 0
-    uu_profileDataHit;
+ jab_firstUseToPrefetcherS;
+ jjj_hitOnPrefetchedWay0;  //miramos si tenemos un acierto sobre una prebusqueda en el way 0
     jj_popL1RequestQueue2;
   }
 
@@ -2512,10 +2365,9 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
 //hh_issueStoreHit;
 //s_deallocateTBE;
 
-    k_dataFromL2CacheToL1Requestor
+k_dataFromL2CacheToL1Requestor
 //    uu_profileMiss;
-    jab_firstUseToPrefetcherS;
-    uu_profileDataHit;
+     jab_firstUseToPrefetcherS;
     jj_popL1RequestQueue2;
   }
   
@@ -2526,107 +2378,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   }
 
   
-////////////// 
-// SM
 
-
-  transition(L2_SM,  {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_M) {
-    u_writeDataFromResponseQueueToL2Cache;
-    //hh_issueStoreHit;
-    //c_finalAckToDirIfNeeded;
-    s_deallocateTBE;
-    jjj_popResponeDramQueue;
-  }
-
- transition(L2_SM, L2_INV) {  // could see an invalidate from the directory (earlier epoch)
-    t_sendAckToInvalidator;
-    l_popForwardedRequestQueue;
-  }
-
-  transition(L2_SM, {Forwarded_GETS,Forwarded_GET_INSTR, Forwarded_PREFS, Forwarded_PREFX,L1_GETS, L1_GETX,L1_GET_INSTR, Forwarded_GETX}) {  // could see Forwards, if directory responses get out-of-order
-    //z_stall;
-    x_recycleRequest;
-  }
-  
-  transition(L2_SM, Data_ext_ack_not_0) {
-    u_writeDataFromResponseQueueToL2Cache;
-    p_addNumberOfPendingExtAcks;
-    mm_rememberIfFinalAckNeeded;
-    jjj_popResponeDramQueue;
-  }
-
- 
-
-
-///////////////////
-//  SSM
-
-transition(L2_SSM, L2_INV) {  // could see an invalidate for SS
-    yy_recordInvalidatorID;
-    l_popForwardedRequestQueue;
-  }
-
-  // stall all Forwarded request
-  transition(L2_SSM, {Forwarded_GETS, Forwarded_GET_INSTR, Forwarded_GETX, Forwarded_PREFS, Forwarded_PREFX}) {
-    z_stall;
-  }
-
-  // stall all L1 request
-  transition(L2_SSM, {L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
-   // z_stall;
-   x_recycleRequest;
-  }  
-
-  transition(L2_SSM, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_SSMV) {
-    u_writeDataFromResponseQueueToL2Cache;
-    //c_finalAckToDirIfNeeded;
-    jjj_popResponeDramQueue;
-  }
-
-  transition(L2_SSM, Data_ext_ack_not_0) {
-    u_writeDataFromResponseQueueToL2Cache;
-    p_addNumberOfPendingExtAcks;
-    mm_rememberIfFinalAckNeeded;
-    jjj_popResponeDramQueue;
-  }
-
-
-  transition(L2_SSM, Proc_int_ack) {
-    aa_removeResponseSharer;
-    r_decrementNumberOfPendingIntAcks;
-    o_popIncomingResponseQueue;
-  }
-
-  transition(L2_SSM, Proc_last_int_ack, L2_SM) {
-    aa_removeResponseSharer;
-    r_decrementNumberOfPendingIntAcks;
-    o_popIncomingResponseQueue;
-    zz_sendAckToQueuedInvalidator;
-  }
-
-///////////////////
-// SSMV
-
-transition(L2_SSMV, Proc_int_ack) {
-    aa_removeResponseSharer;
-    r_decrementNumberOfPendingIntAcks;
-    o_popIncomingResponseQueue;
-  }
-
-  transition(L2_SSMV, Proc_last_int_ack, L2_M) {
-    aa_removeResponseSharer;
-    r_decrementNumberOfPendingIntAcks;
-    //hh_issueStoreHit;
-    s_deallocateTBE;
-    o_popIncomingResponseQueue;
-  }
-  
-
-  // stall all L1 request
-  transition(L2_SSMV, {L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
-    //z_stall;
-    x_recycleRequest;
-  }  
 
 //======================================================
   // BASE STATE - SS
@@ -2685,8 +2437,8 @@ transition(L2_SSMV, Proc_int_ack) {
 //hh_issueStoreHit;
 //s_deallocateTBE;
 
-    k_dataFromL2CacheToL1Requestor
-    uu_profileDataHit;
+k_dataFromL2CacheToL1Requestor
+    //uu_profileMiss;
     jj_popL1RequestQueue2;
   }
 
@@ -2706,7 +2458,7 @@ transition(L2_SSMV, Proc_int_ack) {
     vv_issueInvalidateOtherIntL1copiesRequest;  // for internal
 //JORGE
   //  b_issueGETX;  // for external
-    uu_profileDataHit;
+    //uu_profileMiss;
     jj_popL1RequestQueue2;
   }
 
@@ -2720,12 +2472,12 @@ transition(L2_SS, L1_GETX, L2_MV) {
     bbb_setPendingIntAcksToSharers;
     vv_issueInvalidateOtherIntL1copiesRequest;  // for internal
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //jrdr_setReuseInDataArray;
     setTimeLast;
     nn_addSharer;
 //JORGE
    // b_issueGETX;  // for external
-    uu_profileDataHit;
+    //uu_profileMiss;
     jj_popL1RequestQueue2;
   }
 
@@ -2868,7 +2620,6 @@ transition(L2_SS, L1_GETX, L2_MV) {
     k_dataFromL2CacheToL1Requestor;
     jjj_statsPrefetchLocal4;
     jab_firstUseToPrefetcherX;
-    uu_profileDataHit;
     jj_popL1RequestQueue2;
   }
 
@@ -2891,7 +2642,6 @@ transition(L2_SS, L1_GETX, L2_MV) {
 
     jjj_statsPrefetchLocal4;
     jab_firstUseToPrefetcherX;
-    uu_profileDataHit;
     jj_popL1RequestQueue2;
   }
 
@@ -2923,15 +2673,15 @@ transition(L2_SS, L1_GETX, L2_MV) {
     uu_profileAccess;
     jsr_setReused;
     ww_profileMissNoDir;
+    fjj_removeDataArray;
     i_allocateTBE;
     bbb_setPendingIntAcksToSharers;
     g_issueDownGradeIntL1copiesRequest;
     ss_recordGetSL1ID;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //jrdr_setReuseInDataArray;
     setTimeLast;
     nn_addSharer;
-    uu_profileDataHit;
     jj_popL1RequestQueue2;
   }
 
@@ -2939,15 +2689,16 @@ transition(L2_SS, L1_GETX, L2_MV) {
     uu_profileAccess;
     jsr_setReused;
     ww_profileMissNoDir;
+    fjj_removeDataArray;
     i_allocateTBE;
     bbb_setPendingIntAcksToSharers;
     v_issueInvalidateIntL1copyRequest;
     set_setMRU;
-    jrdr_setReuseInDataArray;
+    //jrdr_setReuseInDataArray;
     setTimeLast;
     nn_addSharer;
     xx_recordGetXL1ID;
-    uu_profileDataHit;
+    fjj_removeDataArray;
     jj_popL1RequestQueue2;
   }
 
@@ -2973,9 +2724,6 @@ transition(L2_SS, L1_GETX, L2_MV) {
 //    fl_popDataReplQueue;
 //  }
 
-
-  // Transitions from L2_MIV, waiting for local L1 response
-  //transition(L2_MIV, Data_int_ack, L2_MIN) {
   
   transition(L2_MIV, Data_int_ack, L2_I) {
     aa_removeResponseSharer;
@@ -3071,7 +2819,9 @@ transition(L2_SS, L1_GETX, L2_MV) {
   transition(L2_MIT, Data_int_ack, L2_MT) {
     aa_removeResponseSharer;
     jm_writeDataFromResponseQueueToL2Cache;
+    jjit_initialTouch_i1;
     hh_issueStoreHit;  // internal requestor
+    fjj_insertionDataArray;
     s_deallocateTBE;
     jjj_keepReuseL1a;
     o_popIncomingResponseQueue;
@@ -3088,27 +2838,18 @@ transition(L2_SS, L1_GETX, L2_MV) {
   // a GetS request put us in this state
   // stall must stall if we get a GETX request
   transition(L2_MO, Data_int_ack, L2_SO) {
+  	fjj_insertionDataArray;
+  	jjit_initialTouch_i1;
     jm_writeDataFromResponseQueueToL2Cache;
     ee_dataFromL2CacheToGetSIDs;  // could be an internal or external requestor
     s_deallocateTBE;
     o_popIncomingResponseQueue;
   }  
-
-  transition(L2_MO, {Forwarded_GETS, Forwarded_GET_INSTR}) {  // can see forwards, not inv
-    dd_recordGetSForwardID;
-    l_popForwardedRequestQueue;
-  }
-  
-  transition(L2_MO,Forwarded_PREFS) {  // can see forwards, not inv
-    dd_recordGetSForwardID;
-    l_popForwardedRequestQueue;
-  }
   
   transition(L2_MO, {L1_GETS, L1_GET_INSTR}) {
     jsr_setReused;
     ww_profileMissNoDir;
     set_setMRU;
-    jrdr_setReuseInDataArray;
     setTimeLast;
     nn_addSharer;
     ss_recordGetSL1ID;
@@ -3122,64 +2863,32 @@ transition(L2_SS, L1_GETX, L2_MV) {
     x_recycleRequest;
   }
   
-  
-  // Transistion from L2_MOIC
-  // a Forwarded_GETX put us here so we should not see any more forwards
-  // stall on all L1 requests, once data is received send new data to all queued up L1 shares
-  // then immediately send invalidate request to those new L1 shared copies
-  // 
-  // KEY DIFFERENCE: L2_MOICR assumes the L1 data responder moved to I state and removes the sharer,
-  // while L2_MOIC assumes the L1 data responder moved to S state and doesn't remove the sharer
-  transition(L2_MOIC, Data_int_ack, L2_OIC) { // need only one ack
-    jm_writeDataFromResponseQueueToL2Cache;
-    ee_dataFromL2CacheToGetSIDs;
-    bbb_setPendingIntAcksToSharers;
-    tt_issueSharedInvalidateIntL1copiesRequest; 
-    o_popIncomingResponseQueue;
-  }  
-
-  transition(L2_MOIC, {L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
-    //z_stall;
-    x_recycleRequest;
-  }
-
-
-  
-  // Transistion from L2_MOICR
-  // a Forwarded_GETX put us here so we should not see any more forwards
-  // stall on all L1 requests, once data is received send new data to all queued up L1 shares
-  // then immediately send invalidate request to those new L1 shared copies
-  // 
-  // KEY DIFFERENCE: L2_MOICR assumes the L1 data responder moved to I state and removes the sharer,
-  // while L2_MOIC assumes the L1 data responder moved to S state and doesn't remove the sharer
-  transition(L2_MOICR, Data_int_ack, L2_OIC) { // need only one ack
-    aa_removeResponseSharer;
-    jm_writeDataFromResponseQueueToL2Cache;
-    ee_dataFromL2CacheToGetSIDs;
-    bbb_setPendingIntAcksToSharers;
-    tt_issueSharedInvalidateIntL1copiesRequest; 
-    o_popIncomingResponseQueue;
-  }  
-
-  transition(L2_MOICR, {L1_GETS, L1_GET_INSTR, L1_GETX}) {
-    //z_stall;
-    x_recycleRequest;
-  }
-  
-  // L2_MOZ
-  // simply wait on data
-  // stall on everything
-  transition(L2_MOZ, Data_int_ack, L2_SO) {
+    // Transistion from L2_MO, waiting for local L1 data response
+  // a GetS request put us in this state
+  // stall must stall if we get a GETX request
+  transition(L2_NRMO, Data_int_ack, L2_NRSS) {
+  	jjit_initialTouch_i0;
     jm_writeDataFromResponseQueueToL2Cache;
     ee_dataFromL2CacheToGetSIDs;  // could be an internal or external requestor
     s_deallocateTBE;
     o_popIncomingResponseQueue;
   }  
   
-  // stall everything
-  transition(L2_MOZ, {Forwarded_GETS, Forwarded_PREFS, Forwarded_PREFX, Forwarded_GET_INSTR, Forwarded_GETX, L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
-   // z_stall;
-   x_recycleRequest;
+  transition(L2_NRMO, {L1_GETS, L1_GET_INSTR}) {
+    jsr_setReused;
+    ww_profileMissNoDir;
+    set_setMRU;
+    setTimeLast;
+    nn_addSharer;
+    ss_recordGetSL1ID;
+    jj_popL1RequestQueue2;
+  }
+
+ 
+  //transition(L2_MO, {L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}, L2_MOZ) {  // don't go there, just go to a stall state
+  transition(L2_NRMO, {L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {  // don't go there, just go to a stall state
+    //z_stall;
+    x_recycleRequest;
   }
   
   // ===============================================
@@ -3214,7 +2923,6 @@ transition(L2_SS, L1_GETX, L2_MV) {
     nn_addSharer;
     setTimeLast;
     k_dataFromL2CacheToL1Requestor;
-    uu_profileDataHit;
     jj_popL1RequestQueue2;
   }
 
@@ -3234,9 +2942,9 @@ transition(L2_O, L1_GETX, L2_MT) {
 //    b_issueGETX;
 //hh_issueStoreHit;
 //s_deallocateTBE;
-    k_dataFromL2CacheToL1Requestor
+k_dataFromL2CacheToL1Requestor
+    //uu_profileMiss;
     //jjj_checkDWG;
-    uu_profileDataHit;
     jj_popL1RequestQueue2;
   }
 
@@ -3286,7 +2994,6 @@ transition(L2_O, L1_GETX, L2_MT) {
     setTimeLast;
     nn_addSharer;
     k_dataFromL2CacheToL1Requestor;
-    uu_profileDataHit;
     jj_popL1RequestQueue2;
   }
 
@@ -3307,7 +3014,6 @@ transition(L2_O, L1_GETX, L2_MT) {
  
     //uu_profileMiss;
     //jjj_checkDWG;
-    uu_profileDataHit;
     jj_popL1RequestQueue2;
   }
 
@@ -3332,7 +3038,6 @@ transition(L2_O, L1_GETX, L2_MT) {
    
     //uu_profileMiss;
     //jjj_checkDWG;
-    uu_profileDataHit;
     jj_popL1RequestQueue2;
   }
 
@@ -3353,7 +3058,6 @@ transition(L2_O, L1_GETX, L2_MT) {
 
     //uu_profileMiss;
     //jjj_checkDWG;
-    uu_profileDataHit;
     jj_popL1RequestQueue2;
   }
 
@@ -3523,11 +3227,9 @@ transition(L2_NRSS, L2_Replacement, L2_NRSIV) {
 transition(L2_NRSS, {L1_GETS, L1_GET_INSTR}, L2_NRSS_IS) {
 	uu_profileAccess;
 	i_allocateTBE;
-	//k_dataFromL2CacheToL1Requestor
 	ddd_setPendingIntAcksToOne;
-	
-	fjj_insertionDataArray;
 	jsr_setReused;
+	//NCID fjj_insertionDataArray;
 	set_setMRU;
 	setTimeLast;
 	jg_issueDownGradeSmallestL1copyRequest;  // Order with respect to nn_addSharer is important!!!!
@@ -3539,23 +3241,15 @@ transition(L2_NRSS, {L1_GETS, L1_GET_INSTR}, L2_NRSS_IS) {
 }
 
 transition(L2_NRSS_IS, Data_int_ack, L2_SS) {
-    jm_writeDataFromResponseQueueToL2Cache;
+	fjj_insertionDataArray;
+	jjit_initialTouch_i1;
+    //NCID jm_writeDataFromResponseQueueToL2Cache;
     ee_dataFromL2CacheToGetSIDs;  // could be an internal or external requestor
     jpcc_profileCache2Cache;
     s_deallocateTBE;
     o_popIncomingResponseQueue;
   }  
 
-  transition(L2_NRSS_IS, {Forwarded_GETS, Forwarded_GET_INSTR}) {  // can see forwards, not inv
-    dd_recordGetSForwardID;
-    l_popForwardedRequestQueue;
-  }
-  
-  transition(L2_NRSS_IS,Forwarded_PREFS) {  // can see forwards, not inv
-    dd_recordGetSForwardID;
-    l_popForwardedRequestQueue;
-  }
-  
   transition(L2_NRSS_IS, {L1_GETS, L1_GET_INSTR}) {
     jsr_setReused;
     ww_profileMissNoDir;
@@ -3583,33 +3277,29 @@ transition(L2_NRSS, L1_UPGRADE_no_others, L2_NRMT) {
 	jj_popL1RequestQueue2;
 }
 
-transition(L2_NRSS, L1_GETX, L2_MV) {
-    
+transition(L2_NRSS, L1_GETX, L2_NRMV) {
     i_allocateTBE;  // for both ext. and int.
     xx_recordGetXL1ID;
     bbb_setPendingIntAcksToSharers;
     vv_issueInvalidateOtherIntL1copiesRequest;  // for internal
     set_setMRU;
-    fjj_insertionDataArray;
-    jsr_setReused;
-    setTimeLast;
+    //NCID fjj_insertionDataArray;
     nn_addSharer;
-    //b_issueGETX;  // for data
-    //uu_profileMiss;
+   // b_issueGETX;  //NCID
+    uu_profileMiss; //NCID
     uu_profileDataMiss;
     jj_popL1RequestQueue2;
 }
 
 transition(L2_NRSS, L1_UPGRADE, L2_MV) {
     uu_profileAccess;
-    
+    jsr_setReused;
     i_allocateTBE;  // for both ext. and int.
     xx_recordGetXL1ID;
     ccc_setPendingIntAcksMinusOne;
     vv_issueInvalidateOtherIntL1copiesRequest;  // for internal
     set_setMRU;
-    fjj_insertionDataArray;
-    jsr_setReused;
+    //NCID fjj_insertionDataArray;
     setTimeLast;
     nn_addSharer;
     //b_issueGETX;  // for data
@@ -3643,6 +3333,17 @@ transition(L2_NRSIV, Proc_last_int_ack, L2_I) {
 }
 
 
+  // Transitions from SIV - initiated by a L2_Replacement
+  transition(L2_NRSIV, Proc_int_ack) {
+    aa_removeResponseSharer;
+    r_decrementNumberOfPendingIntAcks;
+    o_popIncomingResponseQueue;
+  }
+
+
+  transition(L2_NRSIV, L2_INV) {  // could see an invalidate from the directory, but not Forwards
+    z_stall;  // guarenteed to receive all acks thus moving the state to I where the L2_INV can be handled
+  }
 
 transition(L2_NRSIV, {L1_GETS, L1_GET_INSTR, L1_UPGRADE, L1_UPGRADE_no_others, L1_GETX}) {   // stall on all L1 requests
 	//z_stall;
@@ -3664,11 +3365,8 @@ transition(L2_NRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
 	i_allocateTBE;  
 	a_issueGETS;
 	ss_recordGetSL1ID;
-	
-	fjj_insertionDataArray;
 	jsr_setReused;
-	jjj_statsPrefetchLocal; 
-	jjj_statsPrefetchLocalS;
+	//NCID fjj_insertionDataArray;
     
 	set_setMRU;
 	nn_addSharer;
@@ -3679,16 +3377,15 @@ transition(L2_NRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
 
 
 transition(L2_NRS, L1_GETX, L2_IM) {
-    
+    jsr_setReused;
     jjj_statsPrefetchLocal;
     jjj_statsPrefetchLocalS;
+  	i_allocateTBE;
     
     set_setMRU;
-    fjj_insertionDataArray;
-    jsr_setReused;
+    //NCID fjj_insertionDataArray;
     nn_addSharer;
     setTimeLast;
-	i_allocateTBE;
 	xx_recordGetXL1ID;
 
 	b_issueGETX;
@@ -3704,8 +3401,18 @@ transition(L2_NRS, L1_GETX, L2_IM) {
     l_popForwardedRequestQueue;
   }
 
-  transition(L2_INRS, Data_ext_ack_0, L2_NRSS) {
+  transition(L2_INRS, Data_ext_ack_0_no, L2_NRSS) {
     //RnR u_writeDataFromResponseQueueToL2Cache;
+    jjit_initialTouch_e0;
+    h_issueLoadHit;
+    s_deallocateTBE;
+    jjj_popResponeDramQueue;
+  }
+  
+  transition(L2_INRS, Data_ext_ack_0, L2_SS) {
+  	fjj_insertionDataArrayFromDram;
+  	jjit_initialTouch_e1;
+    u_writeDataFromResponseQueueToL2Cache;
     h_issueLoadHit;
     s_deallocateTBE;
     jjj_popResponeDramQueue;
@@ -3718,13 +3425,11 @@ transition(L2_NRS, L1_GETX, L2_IM) {
   }
 
 transition(L2_INRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
-	//qq_allocateL2CacheBlock;
 	ww_profileMissNoDir;
     set_setMRU;
     nn_addSharer;
-    //i_allocateTBE;
     setTimeLast;
-    fjj_insertionDataArray;
+    //NCID fjj_insertionDataArray;
     ss_recordGetSL1ID;
     jj_popL1RequestQueue2;
 
@@ -3740,8 +3445,18 @@ transition(L2_INRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
     l_popForwardedRequestQueue;
   }
 
-  transition(L2_INRSZ, Data_ext_ack_0, L2_NRSS) {
+  transition(L2_INRSZ, Data_ext_ack_0_no, L2_NRSS) {
     //RnR u_writeDataFromResponseQueueToL2Cache;
+    jjit_initialTouch_e0;
+    h_issueLoadHit;
+    s_deallocateTBE;
+    jjj_popResponeDramQueue;
+  }
+  
+  transition(L2_INRSZ, Data_ext_ack_0, L2_SS) {
+    fjj_insertionDataArrayFromDram;
+    jjit_initialTouch_e1;
+    u_writeDataFromResponseQueueToL2Cache;
     h_issueLoadHit;
     s_deallocateTBE;
     jjj_popResponeDramQueue;
@@ -3761,7 +3476,7 @@ transition(L2_INRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
     ww_profileMissNoDir;
     set_setMRU;
      nn_addSharer;
-     fjj_insertionDataArray;
+     //NCID fjj_insertionDataArray;
    setTimeLast;
     ss_recordGetSL1ID;
     jj_popL1RequestQueue2;
@@ -3773,10 +3488,19 @@ transition(L2_INRM, L1_GETX) {  // don't go there, just go to stall state
 	x_recycleRequest;
 }
   
-transition(L2_INRM, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_NRMT) {
+transition(L2_INRM, {Data_ext_ack_0_no, Data_ext_ack_not_0_last_no}, L2_NRMT) {
+	//RnR u_writeDataFromResponseQueueToL2Cache;
+	jjit_initialTouch_e0;
+	hh_issueStoreHit;
+	s_deallocateTBE;
+	jjj_popResponeDramQueue;
+}
+
+transition(L2_INRM, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MT) {
+	fjj_insertionDataArrayFromDram;
+	jjit_initialTouch_e1;
 	u_writeDataFromResponseQueueToL2Cache;
 	hh_issueStoreHit;
-    //c_finalAckToDirIfNeeded;
 	s_deallocateTBE;
 	jjj_popResponeDramQueue;
 }
@@ -3792,14 +3516,23 @@ transition(L2_INRM, Data_ext_ack_not_0) {
   // just wait for all acks and data
   // stall on all requests
   // NOTE: A performance option might be possible to go into M state instead of MT
-  transition(L2_INRMZ, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_NRMT) {
-    u_writeDataFromResponseQueueToL2Cache;
+  transition(L2_INRMZ, {Data_ext_ack_0_no, Data_ext_ack_not_0_last_no}, L2_NRMT) {
+    //u_writeDataFromResponseQueueToL2Cache;
+    jjit_initialTouch_e0;
     hh_issueStoreHit;
-    //c_finalAckToDirIfNeeded;
     s_deallocateTBE;
     jjj_popResponeDramQueue;
   }
 
+  transition(L2_INRMZ, {Data_ext_ack_0, Data_ext_ack_not_0_last}, L2_MT) {
+    fjj_insertionDataArrayFromDram;
+    jjit_initialTouch_e1;
+    u_writeDataFromResponseQueueToL2Cache;
+    hh_issueStoreHit;
+    s_deallocateTBE;
+    jjj_popResponeDramQueue;
+  }
+  
 transition(L2_INRMZ, Data_ext_ack_not_0) {
     u_writeDataFromResponseQueueToL2Cache;
     p_addNumberOfPendingExtAcks;
@@ -3825,14 +3558,13 @@ transition(L2_NRMT, L2_Replacement, L2_NRMIV) {
 }
 
 transition(L2_NRMT, {L1_GETS, L1_GET_INSTR}, L2_MO) {
-    
+    jsr_setReused;
     i_allocateTBE;
     bbb_setPendingIntAcksToSharers;
     g_issueDownGradeIntL1copiesRequest;
     ss_recordGetSL1ID;
     set_setMRU;
-    fjj_insertionDataArray;
-    jsr_setReused;
+    //NCID fjj_insertionDataArray;
     setTimeLast;
     nn_addSharer;
     uu_profileDataMiss;
@@ -3840,13 +3572,12 @@ transition(L2_NRMT, {L1_GETS, L1_GET_INSTR}, L2_MO) {
 }
 
 transition(L2_NRMT, L1_GETX, L2_MIT) {
-    
+    jsr_setReused;
     i_allocateTBE;
     bbb_setPendingIntAcksToSharers;
     v_issueInvalidateIntL1copyRequest;
     set_setMRU;
-    fjj_insertionDataArray;
-    jsr_setReused;
+    //NCID fjj_insertionDataArray;
     setTimeLast;
     nn_addSharer;
     xx_recordGetXL1ID;
@@ -3881,6 +3612,7 @@ transition(L2_NRMT, L1_PUTX_last, L2_NRS) {
 
 transition(L2_NRMIT, Data_int_ack, L2_NRMT) {
     aa_removeResponseSharer;
+    jjit_initialTouch_i0;
     jm_writeDataFromResponseQueueToL2Cache;
     hh_issueStoreHit;  // internal requestor
     s_deallocateTBE;
@@ -3914,5 +3646,32 @@ transition(L2_NRMIV, {L1_GETS, L1_GET_INSTR, L1_GETX}) {   // stall on all L1 re
 }
 
 
+
+  // stall all L1 request
+  transition(L2_NRMV, {L1_GETS, L1_GET_INSTR, L1_GETX, L1_UPGRADE, L1_UPGRADE_no_others}) {
+    //z_stall;
+    x_recycleRequest;
+  }  
+  
+  transition(L2_NRMVD, {Data_ext_ack_0_no,Data_ext_ack_not_0_last_no,Data_ext_ack_0,Data_ext_ack_not_0_last}, L2_NRMT) {
+ 	hh_issueStoreHit;
+ 	s_deallocateTBE;
+	jjj_popResponeDramQueue;
+  }
+
+  transition(L2_NRMV, Proc_int_ack) {
+    aa_removeResponseSharer;
+    r_decrementNumberOfPendingIntAcks;
+    o_popIncomingResponseQueue;
+  }
+
+  transition(L2_NRMV, Proc_last_int_ack, L2_NRMVD) {
+    aa_removeResponseSharer;
+    r_decrementNumberOfPendingIntAcks;
+    //hh_issueStoreHit;
+    //s_deallocateTBE;
+    b_issueGETXfromTBE;
+    o_popIncomingResponseQueue;
+  }
 
 }

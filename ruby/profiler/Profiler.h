@@ -138,6 +138,9 @@ public:
   void addL2Acceso(AccessModeType access_mode, NodeID id);
   CacheProfiler* getInstructionCacheProfiler() { return m_L1I_cache_profiler_ptr; }
   void profile_cache_to_cache(int delay);
+  void addSecondaryStatHitTag(NodeID id);
+  void addSecondaryStatHitData(NodeID id);
+  void addSecondaryStatFirstInsertion(NodeID id);
   
   void addPrimaryStatSample(const CacheMsg& msg, NodeID id);
   void add15StatSample(const CacheMsg& msg, NodeID id);

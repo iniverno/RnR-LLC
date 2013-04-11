@@ -95,6 +95,9 @@ public:
   void addAcceso(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id, bool cache15 = false);
   void addL2Acceso(AccessModeType access_mode, NodeID id);
   void addPrefInv(int id);
+  void addStatHitTag(NodeID id) { m_hitsTag[id]++; }
+  void addStatHitData(NodeID id) { m_hitsData[id]++; }
+  void addStatFirstInsertion(NodeID id) { m_firstInsertions[id]++; }
   
   //vector <int64> getMisses() {return m_misses; }
 void calculaRatios();
@@ -102,6 +105,7 @@ void calculaRatios();
   
   //JORGE
   Vector <int64>  m_accesos_user;
+  Vector <int64>  m_perProcInstructionCount;
   
 private:
   // Private Methods
@@ -160,9 +164,10 @@ private:
   Vector <double> m_l2_miss_user_ratio;
   Vector <double> m_l2_miss_super_ratio;
   Vector <double> m_l2_misses_ratio;
-
+  Vector <int64>  m_hitsTag;
+  Vector <int64>  m_hitsData;
+  Vector <int64>  m_firstInsertions;
   
-
   Vector < int >* m_requestTypeVec_ptr;
 };
 

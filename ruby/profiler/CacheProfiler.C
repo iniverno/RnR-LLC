@@ -153,6 +153,10 @@ CacheProfiler::CacheProfiler(string description)
    m_l15_miss_user_ratio.setSize(RubyConfig::numberOfProcessors());
    m_l15_miss_super_ratio.setSize(RubyConfig::numberOfProcessors());
  m_l15_total_accesos.setSize(RubyConfig::numberOfProcessors());
+  m_hitsTag.setSize(RubyConfig::numberOfProcessors());
+  m_hitsData.setSize(RubyConfig::numberOfProcessors());
+  m_firstInsertions.setSize(RubyConfig::numberOfProcessors());
+  m_perProcInstructionCount.setSize(RubyConfig::numberOfProcessors());
   clearStats();
 
 }
@@ -294,6 +298,31 @@ void CacheProfiler::printStats2(ostream& out) const
   out << description << "_number_of_misses_total" <<  m_misses << endl;
   out << description << "_number_of_dataMisses_total" <<  m_dataMisses << endl;
 
+  //TAG + DATA MPKI
+  Vector <float> aux; aux.setSize(RubyConfig::numberOfProcessors());
+  for(int i=0; i<RubyConfig::numberOfProcessors(); i++) aux[i] = m_misses[i] / m_perProcInstructionCount[i] *1000;
+  out << description << "_MPKI_total" <<  aux << endl;
+  
+  // DATA MPKI
+  for(int i=0; i<RubyConfig::numberOfProcessors(); i++) aux[i] = m_dataMisses[i] / m_perProcInstructionCount[i] *1000;
+  out << description << "_DMPKI_total" <<  aux << endl;
+
+  //HITS
+  out << description << "_number_of_tagHits_total" <<  m_hitsTag << endl;
+  out << description << "_number_of_dataHits_total" <<  m_hitsData << endl;
+  
+  // TAGS HPKI
+  for(int i=0; i<RubyConfig::numberOfProcessors(); i++) aux[i] = m_hitsTag[i] / m_perProcInstructionCount[i] *1000;
+  out << description << "_HPKI_total" <<  aux << endl;
+  
+  // DATA HPKI
+  for(int i=0; i<RubyConfig::numberOfProcessors(); i++) aux[i] = m_hitsData[i] / m_perProcInstructionCount[i] *1000;
+  out << description << "_DHPKI_total" <<  aux << endl;
+
+  // INSERTIONS
+  out << description << "_number_of_insertions_total" <<  m_firstInsertions << endl;
+  for(int i=0; i<RubyConfig::numberOfProcessors(); i++) aux[i] = m_firstInsertions[i] / m_perProcInstructionCount[i] *1000;
+  out << description << "_firstInsertionsPKI_total" <<  aux << endl;
 
   out << description << "_request_size: " << m_requestSize << endl;
 
@@ -429,6 +458,9 @@ m_l15_misses_user[i]=0;
 m_l2_misses_super[i]=0;
 m_l2_misses_user[i]=0;
 
+m_hitsData[i]=0;
+m_hitsTag[i]=0;
+m_firstInsertions[i]=0;
 
 }
 for(int i=0; i<RubyConfig::numberOfL2CachePerChip(); i++)
