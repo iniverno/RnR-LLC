@@ -360,6 +360,7 @@ return binstr;
         if(DEBUG_DRAM  &&  !g_CARGA_CACHE) cout << "petici—n lista: " <<  request.addr << endl;
         
         DEBUG_SLICC(MedPrio, "DramWakeup (sent message): ", out_msg);
+        DEBUG_SLICC(MedPrio, "DramWakeup (L2 destination): ", map_Address_to_L2Node(request.addr));
         
         //m_chip_ptr->m_Directory_dramToDirQueue_vec[0]->enqueue(out_msg, 1);
         if(request.demand)m_chip_ptr->m_L2Cache_responseToL2CacheQueue_vec[map_Address_to_L2Node(request.addr)]->enqueue(out_msg, 1); 
@@ -483,8 +484,6 @@ return binstr;
         if(!(banks[i].bankBusyBitmap & (hit ? (request.write ? Dram::writeHitBankBusyMask : Dram::readHitBankBusyMask) \
         		: (request.write ? Dram::writeMissBankBusyMask : Dram::readMissBankBusyMask)))) //si el banco puede estar libre para la petici—n elegida
         {   
-        
-        	//cerr << "core: " << request.core << "\t" << " bank: "<< i << "\t" << (request.write ? "W" : "R") <<  (hit ? "\thit" : "\tmiss") << endl; 
           //la petici—n puede ser servida
           //actualizamos tablas de ocupaci—n
           if(request.write) busBusyBitmap |= (hit ? writeHitBusBusyMask : writeMissBusBusyMask);
