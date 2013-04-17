@@ -1199,7 +1199,8 @@ template<class ENTRY>
 inline 
 void CacheMemory<ENTRY>::printReuseCommand()
 { 
-/*  cerr << "Reuse patterns per core:" ;
+
+  cerr << "Reuse patterns per core:" ;
   for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++)
   {
   	cerr << endl << "core " << i<< ": " ;
@@ -1209,6 +1210,8 @@ void CacheMemory<ENTRY>::printReuseCommand()
   
   cerr << endl << m_histoGlobal << endl;
   cerr << "The number of not referenced blocks after 1K misses is: " << m_nLastGlobal << endl;
+  /*for(uint i=0; i<m_cache_num_sets; i++)
+  	cerr << m_histoSets[i] << endl;*/
   	
   m_replacementPolicy_ptr->printStats(cerr);	
   
@@ -1216,17 +1219,7 @@ void CacheMemory<ENTRY>::printReuseCommand()
   	cerr  << "_reuse_thread_" << i << ":\t" <<  *m_histoReuseThread[i] << endl;
   	
   cerr  << "_reuse_total_" << ":\t" <<  *m_histoReuse << endl;
-*/  
-
-/*	for (int i = 0; i < m_cache_num_sets; i++) 
-	{
-		for (int j = 0; j < m_cache_assoc; j++) 
-		{
-        	if(m_cache[i][j].m_uses > 0) 
-        		cerr << "uses\t" << i << "\t" << j << "\t" << m_cache[i][j].m_uses << endl;
-    	}
-    }
-*/
+  
 	if(m_version == 0)
 	{
 		cerr << "LinesPerNumberOfHits:";
