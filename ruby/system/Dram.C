@@ -37,7 +37,7 @@
 #include "RubySlicc_ComponentMapping.h"
 #include "RubySlicc_Util.h"
 #include "MessageBuffer.h"
-
+#include "AbstractChip.h"
 
 #include "Prefetcher.h"
 
@@ -47,7 +47,6 @@
 
 #define DEBUG_DRAM 0
 #define DEBUG_WRITE 0
-
 
 
 Dram* Dram::ptrDram[8];
@@ -68,7 +67,7 @@ bool Dram::isPresentMSHR(Address addr, int tipo)
     return false;
 }
   
-void Dram::insertMSHR(Address addr, int tipo, MachineID node)
+void Dram::insertMSHR(Address addr, int tipo, MachineID node, bool secondMiss)
 {
   int tMSHR=(tipo == 3 ||tipo == 4)? 0:1;
    assert(!isPresentMSHR(addr, tipo));
@@ -91,6 +90,7 @@ void Dram::insertMSHR(Address addr, int tipo, MachineID node)
     request.bank= getBank(addr);
     if(tMSHR) request.demand=true;
     else request.demand=false;
+    request.secondMiss = secondMiss;
     
    (tMSHR ? demandMSHR : prefMSHR).push_back(request);
 
@@ -205,6 +205,10 @@ bool Dram::isMSHRReady(int tipo)
 	demandPageHitRatio.setSize(numOfBanks);
 	prefetchPageHitRatio.setSize(numOfBanks);
 	pageHitRatio.setSize(numOfBanks);
+	
+	numSecondMissesServed.setSize(numOfBanks);
+	numSecondMissPageHits.setSize(numOfBanks);
+	secondMissPageHitRatio.setSize(numOfBanks);
 	
 	latDemandMin.setSize(numOfBanks);
 	latDemandMax.setSize(numOfBanks);
@@ -360,6 +364,7 @@ return binstr;
         if(DEBUG_DRAM  &&  !g_CARGA_CACHE) cout << "petici—n lista: " <<  request.addr << endl;
         
         DEBUG_SLICC(MedPrio, "DramWakeup (sent message): ", out_msg);
+        DEBUG_SLICC(MedPrio, "DramWakeup (L2 destination): ", map_Address_to_L2Node(request.addr));
         
         //m_chip_ptr->m_Directory_dramToDirQueue_vec[0]->enqueue(out_msg, 1);
         if(request.demand)m_chip_ptr->m_L2Cache_responseToL2CacheQueue_vec[map_Address_to_L2Node(request.addr)]->enqueue(out_msg, 1); 
@@ -483,8 +488,6 @@ return binstr;
         if(!(banks[i].bankBusyBitmap & (hit ? (request.write ? Dram::writeHitBankBusyMask : Dram::readHitBankBusyMask) \
         		: (request.write ? Dram::writeMissBankBusyMask : Dram::readMissBankBusyMask)))) //si el banco puede estar libre para la petici—n elegida
         {   
-        
-        	//cerr << "core: " << request.core << "\t" << " bank: "<< i << "\t" << (request.write ? "W" : "R") <<  (hit ? "\thit" : "\tmiss") << endl; 
           //la petici—n puede ser servida
           //actualizamos tablas de ocupaci—n
           if(request.write) busBusyBitmap |= (hit ? writeHitBusBusyMask : writeMissBusBusyMask);
@@ -520,8 +523,10 @@ return binstr;
           //*********************************
           //stats
           if(hit) (reqType ? numDemandPageHits[i] : numPrefetchPageHits[i])++;  //num aciertos pag
+          if(hit && request.secondMiss) numSecondMissPageHits[i]++;  //num aciertos pag
           
           (reqType ? numDemandsServed[i] : numPrefetchsServed[i])++; //num servicios
+          if(request.secondMiss) numSecondMissesServed[i]++;
           
           //cout << "lat Servicio:" <<  request.wakeUp - request.queueTime <<endl;
           uint64 aux=request.wakeUp - request.queueTime;
@@ -618,7 +623,7 @@ bool Dram::isAble(Address addr, int tipo)
 }
 
 
-void Dram::i_request(Address addr, int tipo, MachineID node, MachineID core)
+void Dram::i_request(Address addr, int tipo, MachineID node, MachineID core, bool secondMiss)
 { 
   if(DEBUG_DRAM  &&  !g_CARGA_CACHE)
   {
@@ -626,8 +631,9 @@ void Dram::i_request(Address addr, int tipo, MachineID node, MachineID core)
     cerr << "i_request (tipo):" << tipo<< endl;
     cerr << "i_request (node):" << node<< endl;
     cerr << "i_request (core):" << core<< endl;
+    cerr << "i_request (secondMiss):" << secondMiss<< endl;
   }
-  insertMSHR(addr, tipo, core);
+  insertMSHR(addr, tipo, core, secondMiss);
   
   g_eventQueue_ptr->scheduleEvent(this, 1);
 }
@@ -878,6 +884,8 @@ void Dram::request(Address addr, int tipo, MachineID node, MachineID core)
 	  if(numDemandsServed[i]) demandPageHitRatio[i]=(double) numDemandPageHits[i] / (double)numDemandsServed[i];
 	  if(numPrefetchsServed[i]) prefetchPageHitRatio[i]= (double)numPrefetchPageHits[i] / (double)numPrefetchsServed[i];
 	  if(numRequestsServed[i]) pageHitRatio[i]= (double)(numPrefetchPageHits[i]+numDemandPageHits[i]) / (double)numRequestsServed[i];	
+	  if(numSecondMissesServed[i]) secondMissPageHitRatio[i]= (double)numSecondMissPageHits[i] / (double)numSecondMissesServed[i];	
+	  
 	  
 	  medDemandQueueSize[i]= (double)(medDemandQueueSize[i]) / (double)cyclesDRAM;
 	  medPrefetchQueueSize[i]= (double)(medPrefetchQueueSize[i]) / (double)cyclesDRAM;
@@ -908,11 +916,15 @@ void Dram::request(Address addr, int tipo, MachineID node, MachineID core)
     
     out << "avgLatService: " << avgLatService << endl;
     out << "avgLatDemandService: " << avgLatDemandService << endl;
-    out << "avgLatPrefetchService: " << avgLatPrefetchService << endl<< endl;
+    out << "avgLatPrefetchService: " << avgLatPrefetchService << endl << endl;
     
     out << "pageHitRatio: " << pageHitRatio << endl;
     out << "demandPageHitRatio: " << demandPageHitRatio << endl;
-    out << "prefetchPageHitRatio: " << prefetchPageHitRatio << endl<<endl;
+    out << "prefetchPageHitRatio: " << prefetchPageHitRatio << endl<< endl;
+    
+    out << "secondMissPageHitRatio" << secondMissPageHitRatio << endl;
+    out << "numSecondMissesServed" << numSecondMissesServed << endl;
+    out << "numSecondMissPageHits" << numSecondMissPageHits << endl << endl;
     
     out << "latDemandMin: " << latDemandMin << endl;
     out << "latDemandMax: " << latDemandMax << endl;

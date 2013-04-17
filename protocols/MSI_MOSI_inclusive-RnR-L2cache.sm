@@ -762,7 +762,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   action(ja_issuePREFETCH, "ja", desc="Issue prefetch") {
   peek(prefetch_in, RequestMsg) {      
        L2cacheMemory[address].owner := in_msg.RequestorMachId;
-        dram.i_request(address, 3, in_msg.RequestorMachId, in_msg.RequestorMachId);
+        dram.i_request(address, 3, in_msg.RequestorMachId, in_msg.RequestorMachId, false);
       
     }
   }
@@ -770,34 +770,49 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   action(t_sendUpgradePrefetch, "sup", desc="send upgrade prefetch") {
     peek(L1RequestIntraChipL2Network_in, RequestMsg) {
       L2cacheMemory[address].owner := in_msg.RequestorMachId;
-        dram.i_request(address, 5, in_msg.RequestorMachId, in_msg.RequestorMachId);
+        dram.i_request(address, 5, in_msg.RequestorMachId, in_msg.RequestorMachId, false);
     }
   }
   
   
   action(a_issueGETS, "a", desc="Issue GETS") {
     peek(L1RequestIntraChipL2Network_in, RequestMsg) {      
-       L2cacheMemory[address].owner := in_msg.RequestorMachId;
-        dram.i_request(address, 1, in_msg.RequestorMachId, in_msg.RequestorMachId);
+    	L2cacheMemory[address].owner := in_msg.RequestorMachId;
+       	if(L2cacheMemory[address].reused == false && getState(address) == State:L2_NRS ) {
+			dram.i_request(address, 1, in_msg.RequestorMachId, in_msg.RequestorMachId, true);
+		}
+		else {
+			dram.i_request(address, 1, in_msg.RequestorMachId, in_msg.RequestorMachId, false);
+		}
     }
   }
 
   action(b_issueGETX, "b", desc="Issue GETX") {
     peek(L1RequestIntraChipL2Network_in, RequestMsg) {
         L2cacheMemory[address].owner := in_msg.RequestorMachId;       
-        dram.i_request(address, 1, in_msg.RequestorMachId, in_msg.RequestorMachId);      
+        if(L2cacheMemory[address].reused == false && getState(address) == State:L2_NRS ) {
+			dram.i_request(address, 1, in_msg.RequestorMachId, in_msg.RequestorMachId, true);
+		}
+		else {
+			dram.i_request(address, 1, in_msg.RequestorMachId, in_msg.RequestorMachId, false);
+		}
     }
   }
 
   action(f_issueGETINSTR, "f", desc="Issue GETINSTR") {
     peek(L1RequestIntraChipL2Network_in, RequestMsg) {
       L2cacheMemory[address].owner := in_msg.RequestorMachId;
-        dram.i_request(address, 1, in_msg.RequestorMachId, in_msg.RequestorMachId);
+        if(L2cacheMemory[address].reused == false && getState(address) == State:L2_NRS ) {
+			dram.i_request(address, 1, in_msg.RequestorMachId, in_msg.RequestorMachId, true);
+		}
+		else {
+			dram.i_request(address, 1, in_msg.RequestorMachId, in_msg.RequestorMachId, false);
+		}
     }
   }
     
   action(d_issuePUTX, "d", desc="Issue PUTX") {
-        dram.i_request(address, 2, machineID, machineID);
+        dram.i_request(address, 2, machineID, machineID, false);
   }
 
   // finalAck issued from the response queue
@@ -2504,16 +2519,8 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
     jrdr_setReuseInDataArray;
     nn_addSharer;
     setTimeLast;
-  //     i_allocateTBE;
-  //  xx_recordGetXL1ID;
-
-//JORGE
-//    b_issueGETX;
-//hh_issueStoreHit;
-//s_deallocateTBE;
 
     k_dataFromL2CacheToL1Requestor
-//    uu_profileMiss;
     jab_firstUseToPrefetcherS;
     uu_profileDataHit;
     jj_popL1RequestQueue2;
@@ -2665,6 +2672,7 @@ transition(L2_SSMV, Proc_int_ack) {
     setTimeLast;
     nn_addSharer;
     k_dataFromL2CacheToL1Requestor;
+    uu_profileDataHit;
     jj_popL1RequestQueue2;
   }
 
@@ -3301,12 +3309,6 @@ transition(L2_O, L1_GETX, L2_MT) {
     xx_recordGetXL1ID;
     ccc_setPendingIntAcksMinusOne;
     vv_issueInvalidateOtherIntL1copiesRequest;  // for internal
-    
- //JORGE
- //b_issueGETX;  // for external
- 
-    //uu_profileMiss;
-    //jjj_checkDWG;
     uu_profileDataHit;
     jj_popL1RequestQueue2;
   }
@@ -3318,16 +3320,7 @@ transition(L2_O, L1_GETX, L2_MT) {
     uu_profileAccess;
     set_setMRU;
     jrdr_setReuseInDataArray;
-    setTimeLast;
-  //  i_allocateTBE;
-  //  xx_recordGetXL1ID;
-
-//JORGE  
-//  b_issueGETX;  // for external
-
- //hh_issueStoreHit;
- //s_deallocateTBE;
-   
+    setTimeLast;   
    k_dataFromL2CacheToL1Requestor;
    
     //uu_profileMiss;
@@ -3347,12 +3340,6 @@ transition(L2_O, L1_GETX, L2_MT) {
     jrdr_setReuseInDataArray;
     setTimeLast;
     nn_addSharer;
-
-//JORGE
-//    b_issueGETX;  // for external
-
-    //uu_profileMiss;
-    //jjj_checkDWG;
     uu_profileDataHit;
     jj_popL1RequestQueue2;
   }
@@ -3558,6 +3545,7 @@ transition(L2_NRSS_IS, Data_int_ack, L2_SS) {
   
   transition(L2_NRSS_IS, {L1_GETS, L1_GET_INSTR}) {
     jsr_setReused;
+    uu_profileAccess;
     ww_profileMissNoDir;
     set_setMRU;
     setTimeLast;
@@ -3584,7 +3572,7 @@ transition(L2_NRSS, L1_UPGRADE_no_others, L2_NRMT) {
 }
 
 transition(L2_NRSS, L1_GETX, L2_MV) {
-    
+    uu_profileAccess;
     i_allocateTBE;  // for both ext. and int.
     xx_recordGetXL1ID;
     bbb_setPendingIntAcksToSharers;
@@ -3661,8 +3649,9 @@ transition(L2_NRS, L2_Replacement, L2_I) {
 }
 
 transition(L2_NRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
-	i_allocateTBE;  
+	uu_profileAccess;
 	a_issueGETS;
+	i_allocateTBE;  
 	ss_recordGetSL1ID;
 	
 	fjj_insertionDataArray;
@@ -3679,19 +3668,20 @@ transition(L2_NRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
 
 
 transition(L2_NRS, L1_GETX, L2_IM) {
-    
+    uu_profileAccess;
     jjj_statsPrefetchLocal;
-    jjj_statsPrefetchLocalS;
-    
+    jjj_statsPrefetchLocalS; 
+    b_issueGETX;
+    i_allocateTBE;
     set_setMRU;
     fjj_insertionDataArray;
     jsr_setReused;
     nn_addSharer;
     setTimeLast;
-	i_allocateTBE;
+	
 	xx_recordGetXL1ID;
 
-	b_issueGETX;
+	
 	uu_profileDataMiss;
     jj_popL1RequestQueue2;
 }
@@ -3719,6 +3709,7 @@ transition(L2_NRS, L1_GETX, L2_IM) {
 
 transition(L2_INRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
 	//qq_allocateL2CacheBlock;
+	uu_profileAccess;
 	ww_profileMissNoDir;
     set_setMRU;
     nn_addSharer;
@@ -3758,6 +3749,7 @@ transition(L2_INRS, {L1_GETS, L1_GET_INSTR}, L2_IS) {
 
 
   transition(L2_INRM, {L1_GETS,L1_GET_INSTR}, L2_IMO) {
+  	uu_profileAccess;
     ww_profileMissNoDir;
     set_setMRU;
      nn_addSharer;
@@ -3825,7 +3817,7 @@ transition(L2_NRMT, L2_Replacement, L2_NRMIV) {
 }
 
 transition(L2_NRMT, {L1_GETS, L1_GET_INSTR}, L2_MO) {
-    
+    uu_profileAccess;
     i_allocateTBE;
     bbb_setPendingIntAcksToSharers;
     g_issueDownGradeIntL1copiesRequest;
@@ -3840,7 +3832,7 @@ transition(L2_NRMT, {L1_GETS, L1_GET_INSTR}, L2_MO) {
 }
 
 transition(L2_NRMT, L1_GETX, L2_MIT) {
-    
+    uu_profileAccess;
     i_allocateTBE;
     bbb_setPendingIntAcksToSharers;
     v_issueInvalidateIntL1copyRequest;

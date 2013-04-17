@@ -104,11 +104,11 @@ structure(RequestMsg, desc="...", interface="NetworkMessage") {
   string L2CacheStateStr,       desc="describes L2 cache block state";  
   PrefetchBit Prefetch,         desc="Is this a prefetch request";
   Address ProgramCounter,		desc="el PC de la instrucci—n de memoria";
-  bool prefDWG, 					desc="marca si el bloque fue degradado";
+  bool prefDWG, 				desc="marca si el bloque fue degradado";
   CoherenceRequestType Type_UG_PREFETCH,    desc="Type of request has caused de prefetch upgrade";
-  MachineID coreID,    desc="What core request";
-  int epoch, desc="epoch the block has been requested";
-  int reuse, desc="info about reuse in L1+L15";
+  MachineID coreID,    			desc="What core request";
+  int epoch, 					desc="epoch the block has been requested";
+  int reuse, 					desc="info about reuse in L1+L15";
 }
 
 // ResponseMsg
