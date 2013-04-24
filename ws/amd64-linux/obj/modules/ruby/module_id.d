@@ -1,5 +1,5 @@
 module_id.o module_id.d: module_id.c \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/global.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/global.h \
   /usr/include/stdio.h /usr/include/features.h /usr/include/sys/cdefs.h \
   /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h \
   /usr/include/gnu/stubs-64.h \
@@ -15,4 +15,4 @@ module_id.o module_id.d: module_id.c \
   /usr/include/bits/sigset.h /usr/include/bits/time.h \
   /usr/include/sys/sysmacros.h /usr/include/bits/pthreadtypes.h \
   /usr/include/alloca.h /usr/include/string.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/build-id.h
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/build-id.h

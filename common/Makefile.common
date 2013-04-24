@@ -89,7 +89,7 @@ CC_VERSION=3.4.1
 
 ifeq ($(HOST_TYPE),amd64-linux)
   #CC =  /s/gcc-3.4.1/bin/g++
-  CC =  /usr/bin/g++
+  CC =  /usr/bin/g++34
   OPT_FLAGS = -m64 -march=opteron -fPIC
   LDFLAGS += -ggdb -g3 -Wl,-R/s/gcc-4.1.2/lib64 
   MODULE_LDFLAGS += -Wl,-R/s/gcc-4.1.2/lib64

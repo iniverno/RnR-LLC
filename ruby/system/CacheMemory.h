@@ -292,8 +292,10 @@ private:
   
   Vector<uint64> m_nH [3];
   
-    Histogram  *m_histoReuse;
+  Histogram  *m_histoReuse;
   Histogram  *m_histoReuseThread[16];
+  Histogram  *m_histoUse;
+  Histogram  *m_histoUseThread[16];
   
   CacheMemory* m_shadow;
 
@@ -469,7 +471,9 @@ CacheMemory<ENTRY>::CacheMemory(AbstractChip* chip_ptr, int numSetBits,
   }
   
     m_histoReuse = new Histogram(1, 500);
+    m_histoUse = new Histogram(1, 500);
   for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) m_histoReuseThread[i] = new Histogram(1, 500);
+  for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) m_histoUseThread[i] = new Histogram(1, 500);
 
   if(m_version != -1) {
   	if (m_machType == MachineType_L2Cache) m_shadow = new CacheMemory(chip_ptr, numSetBits, g_TAM_SHADOW, MachineType_L2Cache, description, -1);  	
@@ -547,7 +551,9 @@ CacheMemory<ENTRY>::CacheMemory(AbstractChip* chip_ptr, int numSetBits,
   }
   
   m_histoReuse = new Histogram(1, 500);
+  m_histoUse = new Histogram(1, 500);
   for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) m_histoReuseThread[i] = new Histogram(1, 500);
+  for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) m_histoUseThread[i] = new Histogram(1, 500);
 
 
   //  cout << "Before setting trans address list size" << endl;
@@ -908,6 +914,7 @@ void CacheMemory<ENTRY>::allocateL2(const Address& address)
       m_cache[cacheSet][i].m_Address = address;
       m_cache[cacheSet][i].m_Permission = AccessPermission_Invalid;
       m_cache[cacheSet][i].m_uses = 0;
+      m_cache[cacheSet][i].m_reuses = 0;
       m_cache[cacheSet][i].m_reused = false;
       //m_cache[cacheSet][i].m_reuseL1 = 0;
       m_cache[cacheSet][i].m_timeLoad = g_eventQueue_ptr->getTime();
@@ -936,6 +943,7 @@ void CacheMemory<ENTRY>::initialTouch(const Address& address, const NodeID proc)
 	     Time aux=0;
 		if(m_machType==MachineType_L2Cache) {
 			m_cache[cacheSet][i].m_uses = 1;
+			m_cache[cacheSet][i].m_reuses = 0;
 			if(g_SHADOW && m_version != -1) {
 				if(m_shadow->isTagPresent( address)) {
 					m_shadow->deallocate(address);
@@ -967,8 +975,13 @@ void CacheMemory<ENTRY>::deallocate(const Address& address)
 
 	if(m_machType == MACHINETYPE_L2CACHE_ENUM && m_version!=-1) {
 		//L2Cache_Entry a = (L2Cache_Entry) lookup(address);
-		m_histoReuseThread[(lookup(address)).m_owner.num]->add((lookup(address)).m_uses);  
-		m_histoReuse->add(( lookup(address)).m_uses);
+		m_histoUseThread[(lookup(address)).m_owner.num]->add((lookup(address)).m_uses);  
+		m_histoUse->add(( lookup(address)).m_uses);
+		if(lookup(address).m_reuses > 0) {
+			m_histoReuseThread[(lookup(address)).m_owner.num]->add((lookup(address)).m_reuses);  
+			m_histoReuse->add(( lookup(address)).m_reuses);
+		}
+		
 		printTemp(address);
 	}
 	
@@ -1101,6 +1114,7 @@ void CacheMemory<ENTRY>::setMRU(const Address& address, const NodeID proc)
   int way=  findTagInSet(cacheSet, address);
     
   m_cache[cacheSet][way].m_uses++;
+  m_cache[cacheSet][way].m_reuses++;
   
   m_replacementPolicy_ptr->touch(cacheSet, 
                                  way, 
@@ -1215,6 +1229,11 @@ void CacheMemory<ENTRY>::printReuseCommand()
   	
   m_replacementPolicy_ptr->printStats(cerr);	
   
+  for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++) 
+  	cerr  << "_use_thread_" << i << ":\t" <<  *m_histoUseThread[i] << endl;
+  	
+  cerr  << "_use_total_" << ":\t" <<  *m_histoUse << endl;
+
   for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++) 
   	cerr  << "_reuse_thread_" << i << ":\t" <<  *m_histoReuseThread[i] << endl;
   	

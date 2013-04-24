@@ -142,6 +142,7 @@ public:
   void add15StatSample(const CacheMsg& msg, NodeID id);
   void addSecondaryStatSample(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id);
   void addSecondaryStatSample(CacheRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id);
+  void addHit(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id);
   void addAddressTraceSample(const CacheMsg& msg, NodeID id);
 
   void profileRequest(const string& requestStr);
@@ -317,6 +318,8 @@ private:
   int m_num_BA_broadcasts;
 
   Vector<integer_t> m_perProcTotalMisses;
+  Vector<integer_t> m_perProcTotalHits;
+
   Vector<integer_t> m_perProcUserMisses;
   Vector<integer_t> m_perProcSupervisorMisses;
   Vector<integer_t> m_perProcStartTransaction;

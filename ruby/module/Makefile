@@ -20,7 +20,8 @@
 #GEMS_ROOT = $(SIMICS_BASE)/../
 
 # For Simics 3.0
-GEMS_ROOT = $(SRC_BASE)/../../
+#GEMS_ROOT = $(SRC_BASE)/../../
+GEMS_ROOT = /home/jalbe/comun/gems
 
 include $(GEMS_ROOT)/common/Makefile.simics_version
 
@@ -37,8 +38,8 @@ endif
 
   MODULE_CFLAGS += -DADD_ARCH_TO_API -DSIMICS30
   SIMICS_API = 3.0
-  EXTRA_OBJ_FILES = $(shell ls $(SRC_BASE)/../../ruby/$(HOST_TYPE)/generated/$(PROTOCOL)/obj/*.o)
-  CALC_HOST = $(SRC_BASE)/../../scripts/calc_host.sh
+  EXTRA_OBJ_FILES = $(shell ls /home/jalbe/comun/gems/ruby/$(HOST_TYPE)/generated/MSI_MOSI_inclusive/obj/*.o)
+  CALC_HOST = /home/jalbe/comun/gems/scripts/calc_host.sh
 
  # add -m64 and library paths if needed
 CC_VERSION=4.1.2
@@ -84,7 +85,7 @@ MODULE_ARCHS = sun4u
 MODULE_CLASSES = ruby
 
   INCLUDE_FILENAME := $(MODULE_MAKEFILE)
-  EXTRA_VPATH = $(SRC_BASE)/../../ruby
+  EXTRA_VPATH = /home/jalbe/comun/gems/ruby
 
 include $(INCLUDE_FILENAME)
 

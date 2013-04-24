@@ -85,6 +85,7 @@ void profile_request(const string& L1CacheStateStr, const string& L2CacheStateSt
 void profile_miss(const CacheMsg& msg, NodeID id);
 void profile_L1Cache_miss(const CacheMsg& msg, NodeID id);
 void profile_L2Cache_miss(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID l2cacheID);
+void profile_L3Cache_hit(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID l2cacheID);
 void profile_accessL3(AccessModeType type, NodeID proc);
 void profile_token_retry(const Address& addr, AccessType type, int count);
 void profile_filter_action(int action);

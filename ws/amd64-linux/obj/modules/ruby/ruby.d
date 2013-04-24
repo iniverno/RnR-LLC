@@ -1,4 +1,4 @@
-ruby.o ruby.d: /export/home/jalbe/comun/gems/ws/modules/ruby/ruby.c \
+ruby.o ruby.d: /home/jalbe/comun/gems/ws/modules/ruby/ruby.c \
   /usr/include/errno.h /usr/include/features.h /usr/include/sys/cdefs.h \
   /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h \
   /usr/include/gnu/stubs-64.h /usr/include/bits/errno.h \
@@ -19,46 +19,46 @@ ruby.o ruby.d: /export/home/jalbe/comun/gems/ws/modules/ruby/ruby.c \
   /usr/include/bits/sigset.h /usr/include/bits/time.h \
   /usr/include/sys/sysmacros.h /usr/include/bits/pthreadtypes.h \
   /usr/include/alloca.h /usr/include/strings.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/api.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/module-host-config.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/global.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/build-id.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/types.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/api.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/module-host-config.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/global.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/build-id.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/types.h \
   /usr/include/stdint.h \
   /usr/lib/gcc/x86_64-redhat-linux/4.1.2/include/limits.h \
   /usr/lib/gcc/x86_64-redhat-linux/4.1.2/include/syslimits.h \
   /usr/include/limits.h /usr/include/bits/posix1_lim.h \
   /usr/include/bits/local_lim.h /usr/include/linux/limits.h \
   /usr/include/bits/posix2_lim.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/callbacks-types.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/breakpoints.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/callbacks.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/configuration.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/control.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/event.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/front.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/util/vtprintf.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/callbacks-types.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/breakpoints.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/callbacks.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/configuration.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/control.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/event.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/front.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/util/vtprintf.h \
   /usr/include/setjmp.h /usr/include/bits/setjmp.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/profiling.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/statistics.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/memory.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/device.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/processor.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/decoder.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/hindsight.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/tick.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/disassemble.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/arch/alpha.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/arch/x86.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/arch/ppc.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/generic-spr.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/arch/arm.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/arch/mips.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/arch/ia64.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/arch/sparc.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/core/obsolete.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/alloc.h \
-  /usr/local/pkg/simics-3.0.31/src/include/simics/util/alloc.h \
-  /export/home/jalbe/comun/gems/ws/modules/ruby/mf_api.h \
-  /export/home/jalbe/comun/gems/ws/modules/ruby/commands.h \
-  /export/home/jalbe/comun/gems/ws/modules/../../ruby/init.h
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/profiling.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/statistics.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/memory.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/device.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/processor.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/decoder.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/hindsight.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/tick.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/disassemble.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/arch/alpha.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/arch/x86.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/arch/ppc.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/generic-spr.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/arch/arm.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/arch/mips.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/arch/ia64.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/arch/sparc.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/core/obsolete.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/alloc.h \
+  /home/jalbe/comun/gems/simics-3.0-install/simics-3.0.31/src/include/simics/util/alloc.h \
+  /home/jalbe/comun/gems/ws/modules/ruby/mf_api.h \
+  /home/jalbe/comun/gems/ws/modules/ruby/commands.h \
+  /home/jalbe/comun/gems/ws/modules/../../ruby/init.h

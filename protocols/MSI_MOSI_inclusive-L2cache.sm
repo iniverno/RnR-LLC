@@ -243,6 +243,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     int prefTypeRepl,				desc="repl por preb, 1=prefS, 2 =prefX";
     int epoch,  			desc="epoch the block arrived";
     int uses, 			desc="number of uses";
+    int reuses, 			desc="number of reuses";
     Time timeLoad, desc="";
     Time timeLast, desc="";
     Time timeRepl, desc="";
@@ -1360,6 +1361,12 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     }
   }
 
+  action(uu_profileHit, "\uh", desc="Profile the demand hit") {
+    peek(L1RequestIntraChipL2Network_in, RequestMsg) {
+      profile_L3Cache_hit(convertToGenericType(in_msg.Type), in_msg.AccessMode, MessageSizeTypeToInt(in_msg.MessageSize), in_msg.Prefetch, L1CacheMachIDToProcessorNum(in_msg.RequestorMachId));
+    }
+  }
+  
   action(uu_profileAccess, "\jjju", desc="Profile an access") {
     peek(L1RequestIntraChipL2Network_in, RequestMsg) {
       profile_accessL3(in_msg.AccessMode, L1CacheMachIDToProcessorNum(in_msg.RequestorMachId));
@@ -2499,6 +2506,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   transition(L2_S, {L1_GETS, L1_GET_INSTR}, L2_SS) {
       uu_profileAccess;
       jsr_setReused;
+      uu_profileHit;
        jjj_statsPrefetchLocal; 
        jjj_statsPrefetchLocalS;
     
@@ -2518,6 +2526,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
  transition(L2_S, L1_GETX, L2_MT) {
      uu_profileAccess;
     jsr_setReused;
+    uu_profileHit;
     jjj_statsPrefetchLocal;
     jjj_statsPrefetchLocalS;
     
@@ -2672,6 +2681,7 @@ transition(L2_SSMV, Proc_int_ack) {
   transition(L2_SS, {L1_GETS, L1_GET_INSTR}) {
       uu_profileAccess;
     jsr_setReused;
+    uu_profileHit;
     ww_profileMissNoDir;
     set_setMRU;
     setTimeLast;
@@ -2725,6 +2735,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
 //  transition(L2_SS, L1_GETX, L2_IMV) {
     uu_profileAccess;
     jsr_setReused;
+    uu_profileHit;
     i_allocateTBE;  // for both ext. and int.
     xx_recordGetXL1ID;
     bbb_setPendingIntAcksToSharers;
@@ -2861,6 +2872,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
   transition(L2_M, {L1_GETS, L1_GET_INSTR}, L2_SO) {  // FIXME FOR BETTER PERFORMANCE - an E state would be nice here
     uu_profileAccess;
     jsr_setReused;
+    uu_profileHit;
     ww_profileMissNoDir;
     set_setMRU;
     setTimeLast;
@@ -2874,6 +2886,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
   transition(L2_M, L1_GETX, L2_MT) {
     uu_profileAccess;
     jsr_setReused;
+    uu_profileHit;
     ww_profileMissNoDir;
     set_setMRU;
     setTimeLast;
@@ -2916,6 +2929,7 @@ k_dataFromL2CacheToL1Requestor;
     uu_profileAccess;
     jsr_setReused;
     ww_profileMissNoDir;
+    uu_profileHit;
     i_allocateTBE;
     bbb_setPendingIntAcksToSharers;
     g_issueDownGradeIntL1copiesRequest;
@@ -2929,6 +2943,7 @@ k_dataFromL2CacheToL1Requestor;
   transition(L2_MT, L1_GETX, L2_MIT) {
     uu_profileAccess;
     jsr_setReused;
+    uu_profileHit;
     ww_profileMissNoDir;
     i_allocateTBE;
     bbb_setPendingIntAcksToSharers;
@@ -3184,6 +3199,7 @@ k_dataFromL2CacheToL1Requestor;
   transition(L2_O, {L1_GETS, L1_GET_INSTR}, L2_SO) {
     uu_profileAccess;
     jsr_setReused;
+    uu_profileHit;
     ww_profileMissNoDir;
     set_setMRU;
     nn_addSharer;
@@ -3197,6 +3213,7 @@ k_dataFromL2CacheToL1Requestor;
 transition(L2_O, L1_GETX, L2_MT) {
     uu_profileAccess;
     jsr_setReused;
+    uu_profileHit;
     set_setMRU;
     setTimeLast;
     nn_addSharer;
@@ -3245,6 +3262,7 @@ k_dataFromL2CacheToL1Requestor
   transition(L2_SO, {L1_GETS, L1_GET_INSTR}) {
     uu_profileAccess;
     jsr_setReused;
+    uu_profileHit;
     ww_profileMissNoDir;
     set_setMRU;
     setTimeLast;
@@ -3254,50 +3272,28 @@ k_dataFromL2CacheToL1Requestor
   }
 
   transition(L2_SO, L1_UPGRADE, L2_OMV) {
-    uu_profileAccess;
-    jsr_setReused;
-    set_setMRU;
     nn_addSharer;
     setTimeLast;
     i_allocateTBE;
     xx_recordGetXL1ID;
     ccc_setPendingIntAcksMinusOne;
     vv_issueInvalidateOtherIntL1copiesRequest;  // for internal
-    
- //JORGE
- //b_issueGETX;  // for external
- 
-    //uu_profileMiss;
-    //jjj_checkDWG;
     jj_popL1RequestQueue2;
   }
 
 //JORGE
 //  transition(L2_SO, L1_UPGRADE_no_others, L2_OM) {
  transition(L2_SO, L1_UPGRADE_no_others, L2_MT) {
- 	jsr_setReused;
-    uu_profileAccess;
-    set_setMRU;
-    setTimeLast;
-  //  i_allocateTBE;
-  //  xx_recordGetXL1ID;
-
-//JORGE  
-//  b_issueGETX;  // for external
-
- //hh_issueStoreHit;
- //s_deallocateTBE;
-   
+    setTimeLast;   
    k_dataFromL2CacheToL1Requestor;
    
-    //uu_profileMiss;
-    //jjj_checkDWG;
     jj_popL1RequestQueue2;
   }
 
   transition(L2_SO, L1_GETX, L2_OMV) {
     uu_profileAccess;
     jsr_setReused;
+    uu_profileHit;
     i_allocateTBE;
     xx_recordGetXL1ID;
     bbb_setPendingIntAcksToSharers;

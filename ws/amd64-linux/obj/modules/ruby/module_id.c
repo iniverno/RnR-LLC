@@ -35,4 +35,4 @@ extern DLL_EXPORT const char _module_capabilities_[];
 const char _module_capabilities_[] = MOD_VERS ";" MODNAME ";" CLASSES ";" 
                                      DLOPEN_FLAG ";" USR_VER ";" CPUMOD ";"
                                      EXTRA ;
-const char _module_date[] = "Mon May  7 16:40:03 CEST 2012";
+const char _module_date[] = "Mon Jun  9 16:40:17 CEST 2008";

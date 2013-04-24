@@ -4,7 +4,7 @@
 # Some previous definitions.
 $cpu_class = "ultrasparc-iii-plus"
 $os = "solaris10"
-$num_cpus = 8
+$num_cpus = 16
 $megs_per_cpu  = 4096
 $freq_mhz = 1000
 # $disk_size = 8513945600   # Mida original.
@@ -14,15 +14,19 @@ script-branch {
                 scsi_id = 1
                 size = 10738155520
                 #file = "/export/scratch/users/jalbe/tmp/SPEC-PARSEC-sd1.craff"
+				#file = "/export/scratch/users/jalbe/checkpoints/abisko.8p.spec2k6-parsec21.sd0.craff"	
         )
         local $disk_new2 = (create-std-scsi-disk
                 scsi_id = 2
                 size = 10738155520
-                #file = "/export/scratch/users/jalbe/tmp/PARSEC-merged.conf-sd1_image-0.craff"
-        )
+               # file = "/export/scratch/users/jalbe/tmp/PARSEC-merged.conf-sd1_image-0.craff"
+				#file = "/export/scratch/users/jalbe/checkpoints/abisko.8p.spec2k6-parsec21.sd1.craff"	
+		)
         connect-components $scsi_bus $disk_new scsi-bus
         connect-components $scsi_bus $disk_new2 scsi-bus
-        #stop
+        echo HOLA     
+		stop
+		echo HOLAAA
 }
 # Load standard components.
 run-command-file abisko-common.simics

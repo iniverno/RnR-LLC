@@ -227,6 +227,7 @@ void Profiler::wakeup()
 
   (*m_periodic_output_file_ptr) << "ruby_cycles: " << g_eventQueue_ptr->getTime()-m_ruby_start << endl;
   (*m_periodic_output_file_ptr) << "total_misses: " << total_misses << " " << m_perProcTotalMisses << endl;
+  (*m_periodic_output_file_ptr) << "total_hits: " << " " << m_perProcTotalHits << endl;
   (*m_periodic_output_file_ptr) << "instruction_executed: " << instruction_executed << " " << perProcInstructionCount << endl;
   (*m_periodic_output_file_ptr) << "simics_cycles_executed: " << simics_cycles_executed << " " << perProcCycleCount << endl;
   (*m_periodic_output_file_ptr) << "transactions_started: " << transactions_started << " " << m_perProcStartTransaction << endl;
@@ -937,6 +938,7 @@ void Profiler::clearStats()
   }
 
   m_perProcTotalMisses.setSize(RubyConfig::numberOfProcessors());
+  m_perProcTotalHits.setSize(RubyConfig::numberOfProcessors());
   m_perProcUserMisses.setSize(RubyConfig::numberOfProcessors());
   m_perProcSupervisorMisses.setSize(RubyConfig::numberOfProcessors());
   m_perProcStartTransaction.setSize(RubyConfig::numberOfProcessors());
@@ -944,6 +946,7 @@ void Profiler::clearStats()
 
   for(int i=0; i < RubyConfig::numberOfProcessors(); i++) {
     m_perProcTotalMisses[i] = 0;
+    m_perProcTotalHits[i] = 0;
     m_perProcUserMisses[i] = 0;
     m_perProcSupervisorMisses[i] = 0;
     m_perProcStartTransaction[i] = 0;
@@ -1204,6 +1207,11 @@ void Profiler::addSecondaryStatSample(CacheRequestType requestType, AccessModeTy
 void Profiler::addSecondaryStatSample(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id)
 {
   addL2StatSample(requestType, type, msgSize, pfBit, id);
+}
+
+void Profiler::addHit(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id)
+{
+	m_perProcTotalHits[id]++;
 }
 
 void Profiler::addL2StatSample(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id)
