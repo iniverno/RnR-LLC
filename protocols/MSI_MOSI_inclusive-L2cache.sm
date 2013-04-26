@@ -243,6 +243,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     int prefTypeRepl,				desc="repl por preb, 1=prefS, 2 =prefX";
     int epoch,  			desc="epoch the block arrived";
     int uses, 			desc="number of uses";
+    int reuses, 			desc="number of uses";
     Time timeLoad, desc="";
     Time timeLast, desc="";
     Time timeRepl, desc="";

@@ -259,6 +259,8 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     int prefTypeRepl,				desc="repl por preb, 1=prefS, 2 =prefX";
     int epoch,  			desc="epoch the block arrived";
     int uses, 			desc="number of uses";
+    int reuses, 			desc="number of reuses";
+    int reusesNoCycl,   desc="number of reuses when are reset on dataRepl";
     Time timeLoad, desc="";
     Time timeLast, desc="";
     Time timeRepl, desc="";
@@ -319,6 +321,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     int insertionDataArray(Address);
     void setReuseInDataArray(Address);
     void setReuseInDataArray(int);
+    void trackReuseOnDataRepl(Address);
   }
 
   external_type(TBETable) {
@@ -1980,6 +1983,13 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   action(pt_printTemp, "pt", desc="control of block life") {
   	L2cacheMemory.printTemp(address);
   }
+  
+  action(rr_resetReuses, "rrr", desc="Reset number of reuses not inclusing tag-data recycling") {
+    peek(dataArrayReplQueueNetwork_in, RequestMsg) {
+			L2cacheMemory.trackReuseOnDataRepl(address);
+			L2cacheMemory[address].reusesNoCycl := 0;
+		}
+  }
 
   //*****************************************************
   // TRANSITIONS
@@ -2529,6 +2539,7 @@ transition({L2_NP,L2_I}, {L1_GETS, L1_GET_INSTR}, L2_INRS) {
   
   transition(L2_S, Data_replacement, L2_NRS) {
   	pt_printTemp;
+  	rr_resetReuses;
     fl_popDataReplQueue;
   }
 
@@ -2694,7 +2705,7 @@ transition(L2_SSMV, Proc_int_ack) {
 //s_deallocateTBE;
 
     k_dataFromL2CacheToL1Requestor
-    uu_profileDataHit;
+    //uu_profileDataHit;
     jj_popL1RequestQueue2;
   }
 
@@ -2714,7 +2725,7 @@ transition(L2_SSMV, Proc_int_ack) {
     vv_issueInvalidateOtherIntL1copiesRequest;  // for internal
 //JORGE
   //  b_issueGETX;  // for external
-    uu_profileDataHit;
+    //uu_profileDataHit;
     jj_popL1RequestQueue2;
   }
 
@@ -2756,6 +2767,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
 
   transition(L2_SS, Data_replacement, L2_NRSS) {
   	pt_printTemp;
+  	rr_resetReuses;
     fl_popDataReplQueue;
   }
 
@@ -2906,6 +2918,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
   transition(L2_M, Data_replacement, L2_NRS) {
   	d_issuePUTX;
   	pt_printTemp;
+  	rr_resetReuses;
     fl_popDataReplQueue;
   }
 
@@ -2973,6 +2986,7 @@ transition(L2_SS, L1_GETX, L2_MV) {
 
   transition(L2_MT, Data_replacement, L2_NRMT) {
     pt_printTemp;
+    rr_resetReuses;
     fl_popDataReplQueue;
   }
   
@@ -3251,6 +3265,7 @@ transition(L2_O, L1_GETX, L2_MT) {
   transition(L2_O, Data_replacement, L2_NRS) {
   	d_issuePUTX;
   	pt_printTemp;
+  	rr_resetReuses;
     fl_popDataReplQueue;
   }
 
@@ -3369,6 +3384,7 @@ transition(L2_O, L1_GETX, L2_MT) {
 transition(L2_SO, Data_replacement, L2_NRSS) {
 	d_issuePUTX;
 	pt_printTemp;
+	rr_resetReuses;
     fl_popDataReplQueue;
   }
   
