@@ -982,14 +982,14 @@ bool Sequencer::tryCacheAccess(const Address& addr, CacheRequestType type,
                              
   if (type == CacheRequestType_IFETCH) {
     if (Protocol::m_TwoLevelCache) {
-      ret= m_chip_ptr->m_L1Cache_L1IcacheMemory_vec[m_version]->testCacheAccess(line_address(addr), type, data_ptr);
+      ret= m_chip_ptr->m_L1Cache_L1IcacheMemory_vec[m_version]->tryCacheAccess(line_address(addr), type, data_ptr);
     } 
     else {
       ret= m_chip_ptr->m_L1Cache_cacheMemory_vec[m_version]->tryCacheAccess(line_address(addr), type, data_ptr, proc);
     }
   } else {
     if (Protocol::m_TwoLevelCache) {
-      ret= m_chip_ptr->m_L1Cache_L1DcacheMemory_vec[m_version]->testCacheAccess(line_address(addr), type, data_ptr);
+      ret= m_chip_ptr->m_L1Cache_L1DcacheMemory_vec[m_version]->tryCacheAccess(line_address(addr), type, data_ptr);
     } 
     else {
       ret= m_chip_ptr->m_L1Cache_cacheMemory_vec[m_version]->tryCacheAccess(line_address(addr), type, data_ptr, proc);
