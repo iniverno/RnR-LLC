@@ -1463,6 +1463,12 @@ int64 Profiler::getTotalInstructionsExecuted() const
   return sum;
 }
 
+int64 Profiler::getTotalInstructionsExecuted(int i) const
+{
+  
+  return g_system_ptr->getDriver()->getInstructionCount(i);
+}
+
 int64 Profiler::getTotalTransactionsExecuted() const
 {
   int64 sum = m_perProcEndTransaction.sum();

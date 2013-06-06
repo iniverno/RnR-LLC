@@ -187,6 +187,7 @@ public:
   void print(ostream& out) const;
 
   int64 getTotalInstructionsExecuted() const;
+  int64 getTotalInstructionsExecuted(int) const;
   int64 getTotalTransactionsExecuted() const;
 
   //---- begin Transactional Memory CODE

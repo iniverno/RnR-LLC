@@ -284,8 +284,20 @@ void CacheProfiler::printStats2(ostream& out) const
 //out << description << "_miss_ratio_" << (AccessModeType) 0 << ":   " << (100.0 * m_accessModeTypeHistogram[0]) / m_l2_accesos_super << "%" << endl;  
 //  out << description << "_miss_ratio_" << (AccessModeType) 1 << ":   " << (100.0 * m_accessModeTypeHistogram[1]) / m_l2_accesos_user << "%" << endl;
    out << description << "_miss_ratio_" << (AccessModeType) 0 << "2:   " << m_l2_miss_super_ratio << "%" << endl;  
-  out << description << "_miss_ratio_" << (AccessModeType) 1 << "2:   " << m_l2_miss_user_ratio << "%" << endl;  
+  out << description << "_miss_ratio_" << (AccessModeType) 1 << "2:   " << m_l2_miss_user_ratio << "%" << endl; 
+  
+  Vector <float> MPKI;
+  Vector <float> HPKI;
+  MPKI.setSize(RubyConfig::numberOfProcessors());
+  HPKI.setSize(RubyConfig::numberOfProcessors());
 
+  for(int i=0; i<RubyConfig::numberOfProcessors(); i++) { 
+    MPKI[i] = (double)m_misses[i] / g_system_ptr->getProfiler()->getTotalInstructionsExecuted(i) * 1000.0;
+    HPKI[i] = (float)(m_l2_total_accesos[i] - m_misses[i]) / g_system_ptr->getProfiler()->getTotalInstructionsExecuted(i) * 1000.0;
+  }
+  
+  out << description << "_MPKI"  << "2:   " << MPKI << endl;
+  out << description << "_HPKI"  << "2:   " << HPKI  << endl;
 
   out << description << "_request_size: " << m_requestSize << endl;
 
