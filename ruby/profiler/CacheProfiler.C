@@ -277,6 +277,9 @@ void CacheProfiler::printStats15(ostream& out) const
 
 void CacheProfiler::printStats2(ostream& out) const
 {
+  Vector <double> m_perProcInstructionCount;
+  m_perProcInstructionCount.setSize(RubyConfig::numberOfProcessors());
+  
  out << m_description << " cache stats: " << endl;
   string description = "  " + m_description;
  
@@ -298,6 +301,9 @@ void CacheProfiler::printStats2(ostream& out) const
   out << description << "_number_of_misses_total" <<  m_misses << endl;
   out << description << "_number_of_dataMisses_total" <<  m_dataMisses << endl;
 
+  for(int i=0; i<RubyConfig::numberOfProcessors(); i++) m_perProcInstructionCount[i] = g_system_ptr->getProfiler()->getTotalInstructionsExecuted(i);
+  
+  
   //TAG + DATA MPKI
   Vector <float> aux; aux.setSize(RubyConfig::numberOfProcessors());
   for(int i=0; i<RubyConfig::numberOfProcessors(); i++) aux[i] = m_misses[i] / m_perProcInstructionCount[i] *1000;
@@ -306,6 +312,9 @@ void CacheProfiler::printStats2(ostream& out) const
   // DATA MPKI
   for(int i=0; i<RubyConfig::numberOfProcessors(); i++) aux[i] = m_dataMisses[i] / m_perProcInstructionCount[i] *1000;
   out << description << "_DMPKI_total" <<  aux << endl;
+  
+  for(int i=0; i<RubyConfig::numberOfProcessors(); i++) aux[i] = (m_misses[i] + m_dataMisses[i]) / m_perProcInstructionCount[i] *1000;
+  out << description << "_MPKI2" <<  aux << endl;
 
   //HITS
   out << description << "_number_of_tagHits_total" <<  m_hitsTag << endl;
