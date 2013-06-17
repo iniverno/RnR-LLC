@@ -15,10 +15,10 @@ class LRUPolicyL1_kid : public AbstractReplacementPolicy {
   LRUPolicyL1_kid(Index num_sets, Index assoc, Vector<Vector<L2Cache_Entry> > *a);
   ~LRUPolicyL1_kid();
 
-  void touch(Index set, Index way, Time time);
-  Index getVictim(Index set) const;
+  void touch(Index set, Index way, Time time, uint proc);
+  Index getVictim(Index set, uint proc) const;
   Vector<Vector<L1Cache_Entry> > *m_cache;
-  
+  void replacementLower(Index set, Index way) const;
   void printStats(ostream& out) const;
 };
 
@@ -40,8 +40,10 @@ LRUPolicyL1_kid::~LRUPolicyL1_kid()
 {
 }
 
+inline   void LRUPolicyL1_kid::replacementLower(Index set, Index way) const {}
+
 inline 
-void LRUPolicyL1_kid::touch(Index set, Index index, Time time){
+void LRUPolicyL1_kid::touch(Index set, Index index, Time time, uint proc){
   assert(index >= 0 && index < m_assoc);
   assert(set >= 0 && set < m_num_sets);
 
@@ -49,7 +51,7 @@ void LRUPolicyL1_kid::touch(Index set, Index index, Time time){
 }
 
 inline
-Index LRUPolicyL1_kid::getVictim(Index set) const {
+Index LRUPolicyL1_kid::getVictim(Index set, uint proc) const {
   //  assert(m_assoc != 0);
   Time time, smallest_time;
   Index smallest_index;

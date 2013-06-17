@@ -243,7 +243,11 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     int prefTypeRepl,				desc="repl por preb, 1=prefS, 2 =prefX";
     int epoch,  			desc="epoch the block arrived";
     int uses, 			desc="number of uses";
+<<<<<<< HEAD
     int reuses, 			desc="number of reuses";
+=======
+    int reuses, 			desc="number of uses";
+>>>>>>> exp2
     Time timeLoad, desc="";
     Time timeLast, desc="";
     Time timeRepl, desc="";
@@ -2761,7 +2765,6 @@ transition(L2_SS, L1_GETX, L2_MV) {
     ww_profileMissNoDir;
     w_sendPutAckToL1Cache;
     kk_removeRequestSharer;
-    j_set_setMRU;
     jjj_keepReuseL1;
     jj_popL1RequestQueue;
   }
@@ -2960,7 +2963,6 @@ k_dataFromL2CacheToL1Requestor;
     w_sendPutAckToL1Cache;
     kk_removeRequestSharer;
     m_writeDataFromRequestQueueToL2Cache;
-    j_set_setMRU;
     setTimeLast;
     jjj_keepReuseL1;
     jj_popL1RequestQueue;
@@ -3321,7 +3323,6 @@ k_dataFromL2CacheToL1Requestor
     ww_profileMissNoDir;
     w_sendPutAckToL1Cache;
     kk_removeRequestSharer;
-    j_set_setMRU;
     //setTimeLast;
     jjj_keepReuseL1;
     jj_popL1RequestQueue;

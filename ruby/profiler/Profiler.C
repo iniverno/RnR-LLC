@@ -215,6 +215,8 @@ void Profiler::wakeup()
 
   for(int i=0; i < RubyConfig::numberOfProcessors(); i++) {
     perProcInstructionCount[i] = g_system_ptr->getDriver()->getInstructionCount(i) - m_instructions_executed_at_start[i] + 1;
+    m_L2_cache_profiler_ptr->m_perProcInstructionCount[i] = perProcInstructionCount[i];
+    
     perProcCycleCount[i] = g_system_ptr->getDriver()->getCycleCount(i) - m_cycles_executed_at_start[i] + 1;
     // The +1 allows us to avoid division by zero
   }
@@ -499,6 +501,8 @@ m_L2_cache_profiler_ptr->calculaRatios();
       }
     }
     out << "miss_latency_L2Miss: " << m_L2MissLatencyHistogram << endl;
+    
+    out << "cache_to_cache_latency: " << m_c2c_latency << endl;
 
     out << endl;
 
@@ -1008,6 +1012,7 @@ void Profiler::clearStats()
   m_read_sharing_histogram.clear();
   m_write_sharing_histogram.clear();
   m_all_sharing_histogram.clear();
+  m_c2c_latency.clear();
   m_cache_to_cache = 0;
   m_memory_to_cache = 0;
 
@@ -1226,6 +1231,29 @@ void Profiler::addL2StatSample(GenericRequestType requestType, AccessModeType ty
  
 }
 
+void Profiler::addL2dataMissStatSample(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id)
+{
+  m_perProcTotalMisses[id]++;
+  if (type == AccessModeType_SupervisorMode) {
+    m_perProcSupervisorMisses[id]++;
+  } else {
+    m_perProcUserMisses[id]++;
+  }
+  m_L2_cache_profiler_ptr->addStatSample(requestType, type, msgSize, pfBit, id, true);
+}
+
+void Profiler::addSecondaryStatHitTag(NodeID id) {
+    m_L2_cache_profiler_ptr->addStatHitTag(id);
+}
+
+void Profiler::addSecondaryStatHitData(NodeID id) {
+    m_L2_cache_profiler_ptr->addStatHitData(id);
+}
+
+void Profiler::addSecondaryStatFirstInsertion(NodeID id) {
+    m_L2_cache_profiler_ptr->addStatFirstInsertion(id);
+}
+
 void Profiler::addL1DStatSample(const CacheMsg& msg, NodeID id)
 {
   m_L1D_cache_profiler_ptr->addStatSample(CacheRequestType_to_GenericRequestType(msg.getType()),
@@ -1252,6 +1280,11 @@ void Profiler::addL1DAcceso(const CacheMsg& msg, NodeID id)
                                           msg.getAccessMode(), msg.getSize(), msg.getPrefetch(), id);
 }
 
+
+void Profiler::profile_cache_to_cache(int delay)
+{
+	m_c2c_latency.add(delay);
+}
 
 void Profiler::addAddressTraceSample(const CacheMsg& msg, NodeID id)
 {
@@ -1465,7 +1498,7 @@ int64 Profiler::getTotalInstructionsExecuted() const
 
 int64 Profiler::getTotalInstructionsExecuted(int i) const
 {
-  
+
   return g_system_ptr->getDriver()->getInstructionCount(i);
 }
 

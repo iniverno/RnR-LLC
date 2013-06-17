@@ -74,6 +74,7 @@ enumeration(CoherenceRequestType, desc="...") {
   EXE_ACK,   desc="EXclusivE ACKnowledgment";
   PREFS, desc="read prefetch";
   PREFX, desc="read prefetch";
+  DATA_REPL, desc="data has been evicted from the cache array";
 }
 
 // CoherenceResponseType

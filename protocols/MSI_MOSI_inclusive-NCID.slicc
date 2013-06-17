@@ -1,0 +1,7 @@
+../protocols/MSI_MOSI_inclusive-NCID-msg.sm
+../protocols/MSI_MOSI_inclusive-NCID-L115cache.sm
+../protocols/MSI_MOSI_inclusive-NCID-L2cache.sm
+../protocols/MSI_MOSI_inclusive-NCID-dir.sm
+../protocols/standard_CMP-protocol.sm
+
+# protocol briefly described in doc/MSI_MOSI_CMP_directory_2level-protocol-description.txt

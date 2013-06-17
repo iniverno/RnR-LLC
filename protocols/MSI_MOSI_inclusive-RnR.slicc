@@ -1,0 +1,7 @@
+../protocols/MSI_MOSI_inclusive-RnR-msg.sm
+../protocols/MSI_MOSI_inclusive-RnR-L115cache.sm
+../protocols/MSI_MOSI_inclusive-RnR-L2cache.sm
+../protocols/MSI_MOSI_inclusive-RnR-dir.sm
+../protocols/standard_CMP-protocol.sm
+
+# protocol briefly described in doc/MSI_MOSI_CMP_directory_2level-protocol-description.txt

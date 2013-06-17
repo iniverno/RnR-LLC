@@ -254,7 +254,7 @@ g_TRAZA_TAM_3SET: false
 g_TRY_SIZE: 4
 g_NO_REUSE_LRU: 0
 //only for PLI* policies
-g_KIB: true
+g_KIB: false
 //only for 3_SET* policies. it MUST be turned on for right segment hit statistics
 g_REPLACEMENT_POLICY_QUICK_L2_3SET: false
 g_REPLACEMENT_POLICY_L2_3SET: false
@@ -286,6 +286,11 @@ g_INCLUSION_L3: true
 g_PROTEGE_RRIP: false
 g_FUNCTIONAL_SHADOW: true
 g_TAM_SHADOW: 16
+
+g_DATA_FIFO: false
+g_BLOCKS_FIFO: 32768
+g_DATA_NUM_SETS_BITS: 13
+g_DATA_ASSOC: 16
 
 // TSO is deprecated
 TSO: false

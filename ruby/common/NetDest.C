@@ -178,7 +178,7 @@ NodeID NetDest::smallestElement() const
 
 MachineID NetDest::smallestElement(MachineType machine) const
 {
-cout << "hey2"<< endl;
+//cout << "hey2"<< endl;
   for (int j = 0; j < m_bits[MachineType_base_level(machine)].getSize(); j++) {
     if (m_bits[MachineType_base_level(machine)].isElement(j)) {
       MachineID mach = {machine, j};

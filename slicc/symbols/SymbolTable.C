@@ -291,6 +291,7 @@ void SymbolTable::writeChipFiles(string path) const
 	sstr << "    void resetTemp() const;" << endl;
 	sstr << "    void printReuse() const;" << endl;
 	sstr << "    void resetReuse() const;" << endl;
+	sstr << "    bool isBlockNRU(const Address& addr) const;" << endl;
 
 
 
@@ -937,6 +938,13 @@ void SymbolTable::writeChipFiles(string path) const
     sstr <<  "}*/" << endl;
     sstr <<  "m_L2Cache_L2cacheMemory_vec[0]->resetReuse();" << endl;
     sstr <<  "}" << endl << endl;
+    
+    sstr <<  "bool Chip::isBlockNRU(const Address& addr) const" << endl;
+	sstr <<  "{" << endl;
+	sstr <<  "	int l2 = map_Address_to_L2Node(addr);" << endl;
+    sstr <<  "	return (m_chip_ptr->m_L2Cache_L2cacheMemory_vec[l2])->lookup(addr).m_NRU;" << endl;
+    sstr <<  "}" << endl << endl;
+
 
 
     conditionally_write_file(path + "/Chip.C", sstr);

@@ -208,7 +208,8 @@ external_type(Prefetcher) {
 }
 
 external_type(Dram) {
-  void i_request(Address, int, MachineID, MachineID);
+  void i_request(Address, int, MachineID, MachineID, bool);
+  //void i_request(Address, int, MachineID, MachineID);
   bool i_isAble(Address, int);
   bool isAbleMSHR(int);
   bool isPresentMSHR(Address, int);

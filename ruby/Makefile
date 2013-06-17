@@ -173,6 +173,7 @@ SRC_CPP := \
 	StoreCache.C \
 	interface.C \
 	Prefetcher.C \
+	CirBuf.C \
 	Dram.C \
 	SHCTTable.C \
 	CacheMgr.C \
@@ -364,4 +365,4 @@ endif
 DEP := $(addprefix $(RUBY_OBJ_DIR)/,$(SRC_C:.c=.d) $(SRC_CPP:.C=.d))
 
 include $(GEMS_ROOT)/common/Makefile.dep
-#include /e/home/jalbe/comun/gems/common/Makefile.dep
+#include /export/home/jalbe/comun/gems/common/Makefile.dep

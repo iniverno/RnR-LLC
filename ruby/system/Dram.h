@@ -47,6 +47,7 @@ struct dramRequest
   int channel;
   bool valid;
   int bank;
+  bool secondMiss;  //to account the page hit ratio for the second miss of the reuse cache
 };
 
 
@@ -90,7 +91,7 @@ public:
    uint64 getPage(uint64 addr);
   void request(Address addr, int tipo, MachineID node, MachineID core);
   void request(dramRequest req);
-  void i_request(Address addr, int tipo, MachineID node, MachineID core);
+  void i_request(Address addr, int tipo, MachineID node, MachineID core, bool secondMiss=false);
   
   bool isAble(Address, int);  //nos dira si el banco al que queremos insertar está lleno o no
    bool i_isAble(Address, int);  //nos dira si el banco al que queremos insertar está lleno o no
@@ -107,7 +108,7 @@ public:
   //MSHR
   bool isAbleMSHR(int);
   bool isPresentMSHR(Address addr, int);
-  void insertMSHR(Address addr, int tipo, MachineID node);
+  void insertMSHR(Address addr, int tipo, MachineID node, bool secondMiss=false);
   void removeMSHR(Address addr, int tipo);
   dramRequest getMSHREntry(Address addr, int tipo);
 
@@ -162,7 +163,7 @@ private:
   uint64 readHitBankBusyMask;  // 0111 1111 0000 0000  - 7^1 4^0 4^0
   uint64 readHitBusBusyMask; // 0111 1000 0000 0000 0000 0000 - 4^1 19^0
   
-  uint64 writeHitBankBusyMask;  // 
+  uint64 writeHitBankBusyMask;  //
   uint64 writeHitBusBusyMask; // 
   
   //static const uint64 hitBusBusyMask ; // 1000 0000 0000 0000 0000 - 4^1 19^0   //para ocupar el bus 1 ciclo
@@ -220,6 +221,10 @@ private:
   Vector <int64> numPrefetchPageHits;
   Vector <int64> numDemandPageHits;
   
+  Vector <int64> numSecondMissesServed;
+  Vector <int64> numSecondMissPageHits;
+  Vector <double> secondMissPageHitRatio;
+
 
   Vector <int64> cyclesDemandService;
   Vector <int64> cyclesPrefetchService;

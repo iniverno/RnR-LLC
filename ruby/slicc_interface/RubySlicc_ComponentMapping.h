@@ -133,7 +133,7 @@ int map_address_to_L1CacheSet(const Address& addr, int cache_num_set_bits)
 inline
 int map_address_to_L2CacheSet(const Address& addr, int cache_num_set_bits)  
 {
-  assert(cache_num_set_bits == L2_CACHE_NUM_SETS_BITS);  // ensure the l2 bank mapping functions agree with l2 set bits
+  //assert(cache_num_set_bits == L2_CACHE_NUM_SETS_BITS);  // ensure the l2 bank mapping functions agree with l2 set bits
   
    if (g_PAGE_INTERLEAVING) {  //el entrelazado es por p‡gina, p‡gina i+1 -> banco L2 i+1
   //JORGE
@@ -152,6 +152,7 @@ int map_address_to_L2CacheSet(const Address& addr, int cache_num_set_bits)
   	}
   } 
 }//g_PAGE_INTERLEAVING
+
 
 // input parameter is the base ruby node of the L1 cache
 // returns a value between 0 and total_L2_Caches_within_the_system

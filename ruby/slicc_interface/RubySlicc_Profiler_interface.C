@@ -152,14 +152,37 @@ void profile_L2Cache_miss(GenericRequestType requestType, AccessModeType type, i
   g_system_ptr->getProfiler()->addSecondaryStatSample(requestType, type, msgSize, pfBit, nodeID);
 }
 
+void profile_L2Cache_dataMiss(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID nodeID)
+{
+  g_system_ptr->getProfiler()->addL2dataMissStatSample(requestType, type, msgSize, pfBit, nodeID);
+}
+
 void profile_L3Cache_miss(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID nodeID)
 {
   g_system_ptr->getProfiler()->addSecondaryStatSample(requestType, type, msgSize, pfBit, nodeID);
 }
 
+
 void profile_L3Cache_hit(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID nodeID)
 {
   g_system_ptr->getProfiler()->addHit(requestType, type, msgSize, pfBit, nodeID);
+}
+
+void profile_hitTagL3(NodeID proc) {
+    g_system_ptr->getProfiler()->addSecondaryStatHitTag(proc);
+}
+
+void profile_hitDataL3(NodeID proc) {
+    g_system_ptr->getProfiler()->addSecondaryStatHitData(proc);
+}
+
+void profile_dataFirstInsertionL3(NodeID proc) {
+    g_system_ptr->getProfiler()->addSecondaryStatFirstInsertion(proc);
+}
+
+void profile_cache_to_cache(const int delay) 
+{
+	g_system_ptr->getProfiler()->profile_cache_to_cache(delay);
 }
 
 void profile_token_retry(const Address& addr, AccessType type, int count)

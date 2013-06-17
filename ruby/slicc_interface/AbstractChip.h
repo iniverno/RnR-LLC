@@ -115,6 +115,7 @@ public:
   // used when CHECK_COHERENCE is enabled.  See System::checkGlobalCoherence()
   virtual bool isBlockExclusive(const Address& addr) const { return false; }
   virtual bool isBlockShared(const Address& addr) const { return false; }
+  
 
   // cache dump functions
   virtual void recordCacheContents(CacheRecorder& tr) const = 0;
@@ -129,6 +130,8 @@ public:
   virtual void printReuse() const=0;
   virtual void resetReuse() const=0;
   
+  
+  virtual bool isBlockNRU(const Address& addr) const =0;
 //  virtual void pintame(const Address& addr, int m)  = 0;
 
   // pulic data structures  
@@ -137,7 +140,7 @@ public:
   Vector < CacheMemory<L1Cache_Entry>* > m_L1Cache_cacheMemory_vec;
   Vector < CacheMemory<L1Cache_Entry>* > m_L1Cache_L15cacheMemory_vec;
   Vector < CacheMemory<L1Cache_Entry>* > m_L1Cache_L2cacheMemory_vec;
-  Vector < CacheMemory<L1Cache_Entry>* > m_L2Cache_L2cacheMemory_vec;
+  Vector < CacheMemory<L2Cache_Entry>* > m_L2Cache_L2cacheMemory_vec;
 
   // added so that the prefetcher and sequencer can access the L1 and L2 request queues
   Vector < MessageBuffer* > m_L1Cache_optionalQueue_vec;
@@ -159,7 +162,8 @@ public:
   Vector < Dram* >  m_L2Cache_dram_vec;
   Vector < MessageBuffer* >  m_L2Cache_prefResponseToL2CacheQueue_vec;
   Vector < MessageBuffer* >  m_L2Cache_responseToL2CacheQueue_vec;
-  
+  Vector < MessageBuffer* >  m_L2Cache_dataArrayReplQueue_vec;
+
 protected:
   
   // Data Members (m_ prefix)

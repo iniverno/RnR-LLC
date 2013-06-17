@@ -111,5 +111,8 @@ if [ -n "$SIMICS_WORKSPACE" ] ; then
     fi
     export SIMICS_EXTRA_LIB
 fi
-
+echo $TARGETBIN
+echo ${1+"$@"}
+echo $1
+echo $@
 exec "$TARGETBIN" ${1+"$@"}

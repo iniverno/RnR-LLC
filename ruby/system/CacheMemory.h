@@ -75,6 +75,8 @@
 #include "DataBlock.h"
 #include "MachineType.h"
 #include "RubySlicc_ComponentMapping.h"
+#include "RequestMsg.h"
+#include "MessageBuffer.h"
 
 #include "PseudoLRUPolicy.h"
 #include "PseudoLRUPolicy2.h"
@@ -82,7 +84,7 @@
 //#include "LRUPolicy.h"
 #include "RNDPolicyL1.h"
 #include "LRUPolicyL1.h"
-//#include "LRUPolicyL1_kid.h"
+#include "LRUPolicyL1_kid.h"
 #include "LRUPolicyL2.h"
 #include "LRUPolicyL2_kid.h"
 // #include "LRUPolicyL2_kidR.h"
@@ -142,6 +144,9 @@
 #include "L2Cache_Entry.h"
 
 #include "PerfectCacheMemory.h"
+
+#include "CirBuf.h"
+
 #include <vector>
 
 struct shadowEntry {
@@ -149,12 +154,15 @@ struct shadowEntry {
 	uint64 m_nmisses;
 };
 
+class AbstractChip;
+class CirBuf;
+
 template<class ENTRY>
 class CacheMemory {
 public:
 
   // Constructors
-  CacheMemory(AbstractChip* chip_ptr, int numSetBits, int cacheAssoc, const MachineType machType, const string& description, int version);
+  CacheMemory(AbstractChip* chip_ptr, int numSetBits, int cacheAssoc, const MachineType machType, const string& description, int version, int versionB=0);
 // Constructors
   CacheMemory(AbstractChip* chip_ptr, int numSetBits, int cacheAssoc, const MachineType machType, const string& description);
 
@@ -196,6 +204,12 @@ public:
   ENTRY& lookup(const Address& address);
   const ENTRY& lookup(const Address& address) const;
 
+  int insertionDataArray(const Address& address);
+  void evictDataArray(const Address& address);
+
+  void setReuseInDataArray(const Address& address);
+  void setReuseInDataArray(const uint pos);
+  
   // Get/Set permission of cache block
   AccessPermission getPermission(const Address& address) const;
   void changePermission(const Address& address, AccessPermission new_perm);
@@ -219,6 +233,7 @@ public:
   //JORGE
   void printTemp(const Address& address);
   void resetTemp();
+  void trackReuseOnDataRepl(const Address& address);
   
   void addReused(const Address& address);
    
@@ -234,6 +249,8 @@ public:
    const ENTRY& lookupPast(const Address& address) const;
    
    void initialTouch(const Address& address, const NodeID proc) ;
+
+   int m_version;
 
 private:
   // Private Methods
@@ -268,7 +285,6 @@ private:
   
   //JORGE
   int foundTagInSet(Index line, const Address& tag) const;
-  int m_version;
   uint64 *timeLoadArray;
   uint64 *timeLastArray;
   uint64 *timeReplArray;
@@ -291,16 +307,24 @@ private:
   uint64 m_nLastGlobal;
   
   Vector<uint64> m_nH [3];
+ 
+  Vector<uint64> m_firstInsertions;
+  Vector<uint64> m_secondInsertions;
+
   
-  Histogram  *m_histoReuse;
-  Histogram  *m_histoReuseThread[16];
   Histogram  *m_histoUse;
   Histogram  *m_histoUseThread[16];
+  Histogram  *m_histoReuse;
+  Histogram  *m_histoReuseThread[16];
+  Histogram  *m_histoReuseNoCycl;
+  Histogram  *m_histoReuseNoCyclThread[16];
+  
   
   CacheMemory* m_shadow;
-
-	//Number of lines with a number of hits, the position in the vector indicates the number of hits
+  //Number of lines with a number of hits, the position in the vector indicates the number of hits
 	Vector<uint64> m_LperNHits;  
+	
+  void* dataArray;
 };
 
 // Output operator declaration
@@ -324,7 +348,7 @@ ostream& operator<<(ostream& out, const CacheMemory<ENTRY>& obj)
 template<class ENTRY>
 inline 
 CacheMemory<ENTRY>::CacheMemory(AbstractChip* chip_ptr, int numSetBits, 
-                                      int cacheAssoc, const MachineType machType, const string& description, int version)
+                                      int cacheAssoc, const MachineType machType, const string& description, int version, int versionB)
 
 {
    m_version = version;
@@ -463,26 +487,48 @@ CacheMemory<ENTRY>::CacheMemory(AbstractChip* chip_ptr, int numSetBits,
   	m_nLast[i] = 0;
   }
   
-  	for (int i = 0; i < 3; i++) m_nH[i].setSize(RubyConfig::numberOfProcsPerChip());
-	
+  for (int i = 0; i < 3; i++) m_nH[i].setSize(RubyConfig::numberOfProcsPerChip());
+
+  m_firstInsertions.setSize(RubyConfig::numberOfProcsPerChip());
+  m_secondInsertions.setSize(RubyConfig::numberOfProcsPerChip());
+
   for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) {
   	for (int j = 0; j < 3; j++) m_nH[j][i]= 0;
-
+  	m_firstInsertions[i] = 0;
+  	m_secondInsertions[i] = 0;
   }
   
-    m_histoReuse = new Histogram(1, 500);
-    m_histoUse = new Histogram(1, 500);
-  for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) m_histoReuseThread[i] = new Histogram(1, 500);
+
+  m_histoUse = new Histogram(1, 500);
   for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) m_histoUseThread[i] = new Histogram(1, 500);
 
-  if(m_version != -1) {
-  	if (m_machType == MachineType_L2Cache) m_shadow = new CacheMemory(chip_ptr, numSetBits, g_TAM_SHADOW, MachineType_L2Cache, description, -1);  	
 
+  m_histoReuse = new Histogram(1, 500);
+  for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) m_histoReuseThread[i] = new Histogram(1, 500);
+  
+  m_histoReuseNoCycl = new Histogram(1, 500);
+  for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) m_histoReuseNoCyclThread[i] = new Histogram(1, 500);
+
+  if(m_version != -1) {
+  	if (m_machType == MachineType_L2Cache && g_SHADOW) m_shadow = new CacheMemory(chip_ptr, numSetBits, g_TAM_SHADOW, MachineType_L2Cache, description, -1);  	
+  	
+	if(g_DATA_FIFO) {
+		cout << "A FIFO data array with " << g_BLOCKS_FIFO << " is being created" << endl;
+		
+		dataArray = new CirBuf(chip_ptr, g_BLOCKS_FIFO, version);
+	}
+	else {
+		cout << "A DCACHE data array with 2^" << g_DATA_NUM_SETS_BITS << " sets and " << g_DATA_ASSOC  << " assoc is being created" << endl;
+	  dataArray = new CacheMemory(chip_ptr, g_DATA_NUM_SETS_BITS, g_DATA_ASSOC, MachineType_L2Cache, "DataArray", -1, m_version);  	
+	  ((CacheMemory*)dataArray)->m_version = versionB;
+	}	
   } 
   else {
   	m_replacementPolicy_ptr = new LRUPolicyL2(m_cache_num_sets, m_cache_assoc, &m_cache);
   }
 
+  
+  
   cerr << "inic off" << endl;
 }
 
@@ -514,6 +560,8 @@ CacheMemory<ENTRY>::CacheMemory(AbstractChip* chip_ptr, int numSetBits,
 		m_replacementPolicy_ptr = new PseudoLRUPolicy(m_cache_num_sets, m_cache_assoc);
 	  else if(strcmp(g_REPLACEMENT_POLICY_L1, "LRU") == 0)
 		m_replacementPolicy_ptr = new LRUPolicyL1(m_cache_num_sets, m_cache_assoc, &m_cache);
+	  else if(strcmp(g_REPLACEMENT_POLICY_L1, "LRU_kid") == 0)
+		m_replacementPolicy_ptr = new LRUPolicyL1_kid(m_cache_num_sets, m_cache_assoc, &m_cache);
 	  else
 		assert(false);
 	break;
@@ -550,12 +598,15 @@ CacheMemory<ENTRY>::CacheMemory(AbstractChip* chip_ptr, int numSetBits,
     }
   }
   
-  m_histoReuse = new Histogram(1, 500);
   m_histoUse = new Histogram(1, 500);
-  for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) m_histoReuseThread[i] = new Histogram(1, 500);
   for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) m_histoUseThread[i] = new Histogram(1, 500);
 
-
+  m_histoReuse = new Histogram(1, 500);
+  for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) m_histoReuseThread[i] = new Histogram(1, 500);
+  
+  m_histoReuseNoCycl = new Histogram(1, 500);
+  for(int i=0; i<RubyConfig::numberOfProcsPerChip(); i++) m_histoReuseNoCyclThread[i] = new Histogram(1, 500);
+  
   //  cout << "Before setting trans address list size" << endl;
   //create a trans address for each SMT thread
 //   m_trans_address_list.setSize(numThreads);
@@ -776,12 +827,12 @@ bool CacheMemory<ENTRY>::isTagPresent(const Address& address) const
 
   if (location == -1) {
     // We didn't find the tag
-    DEBUG_EXPR(CACHE_COMP, LowPrio, address);
-    DEBUG_MSG(CACHE_COMP, LowPrio, "No tag match");
+    //DEBUG_EXPR(CACHE_COMP, LowPrio, address);
+    //DEBUG_MSG(CACHE_COMP, LowPrio, "No tag match");
     return false;
   } 
-  DEBUG_EXPR(CACHE_COMP, LowPrio, address);
-  DEBUG_MSG(CACHE_COMP, LowPrio, "found");
+  //DEBUG_EXPR(CACHE_COMP, LowPrio, address);
+  //DEBUG_MSG(CACHE_COMP, LowPrio, "found");
   return true;
 }
 
@@ -881,24 +932,6 @@ void CacheMemory<ENTRY>::allocateL2(const Address& address)
   // Find the first open slot
   Index cacheSet = addressToCacheSet(address);
   
-    if( m_version!=-1) {
-	//	cerr << "allocate" << endl;
-	}
-
-  //JORGE
-/*  if(m_shadowSet->isTagPresent(address)) {
-  	uint64 auxMisses= m_nmisses[cacheSet] - m_shadowSet->lookup(address).m_nmisses;
-  	//cerr << "fallos: " << auxMisses<< endl;
-  	if (auxMisses < 1000) {  	
-		m_histoSets[cacheSet].add(auxMisses);
-		m_histoGlobal.add(auxMisses);
-		m_shadowSet->deallocate(address);  	
-	}
-  }
-  
-  m_nmisses[cacheSet]++;
-  m_nmissesGlobal++;
-  */
   
   for (int i=0; i < m_cache_assoc; i++) {
     if (m_cache[cacheSet][i].m_Permission == AccessPermission_NotPresent) {
@@ -915,15 +948,14 @@ void CacheMemory<ENTRY>::allocateL2(const Address& address)
       m_cache[cacheSet][i].m_Permission = AccessPermission_Invalid;
       m_cache[cacheSet][i].m_uses = 0;
       m_cache[cacheSet][i].m_reuses = 0;
+
+      m_cache[cacheSet][i].m_reusesNoCycl = 0;
+
       m_cache[cacheSet][i].m_reused = false;
       //m_cache[cacheSet][i].m_reuseL1 = 0;
       m_cache[cacheSet][i].m_timeLoad = g_eventQueue_ptr->getTime();
       m_cache[cacheSet][i].m_timeLast = g_eventQueue_ptr->getTime();
       
-
-  if( m_version!=-1) {
-	//	cerr << "allocate fin" << endl;
-	}
 
       return;
     }
@@ -931,6 +963,88 @@ void CacheMemory<ENTRY>::allocateL2(const Address& address)
   ERROR_MSG("Allocate didn't find an available entry");
 }
 
+template<class ENTRY>
+inline 
+int CacheMemory<ENTRY>::insertionDataArray(const Address& address) 
+{
+  assert(address == line_address(address));
+  if(!g_DATA_FIFO) assert(!((CacheMemory*) dataArray)->isTagPresent(address));
+  DEBUG_EXPR(CACHE_COMP, HighPrio, address);	
+	
+  if(lookup(address).m_reused) m_secondInsertions[0]++;
+  else m_firstInsertions[0]++;
+
+  lookup(address).m_timeLoad = g_eventQueue_ptr->getTime();
+  
+  
+  if(g_DATA_FIFO) {
+	return ((CirBuf*) dataArray)->insert(address);
+  }
+  else
+  {
+  	CacheMemory* cm = ((CacheMemory*) dataArray);
+  	
+  	
+    if( !cm->cacheAvail(address)) {
+	  Address a = cm->cacheProbe(address, 0);
+	  DEBUG_EXPR(CACHE_COMP, HighPrio, a);
+	  
+	  RequestMsg out_msg;      
+	  (out_msg).m_Address = a;
+	  (out_msg).m_Type = CoherenceRequestType_DATA_REPL;
+	  m_chip_ptr->m_L2Cache_dataArrayReplQueue_vec[map_Address_to_L2(a).num]->enqueue(out_msg); 
+	  
+	  cm->lookup(a).m_Permission = AccessPermission_NotPresent;	  
+	  
+    }
+  	cm->allocateL2(address);
+  	cm->changePermission(address, AccessPermission_Read_Write);
+  	
+  	
+  	//assert(((CacheMemory*) dataArray)->isTagPresent(address));
+    return 0;
+  }
+
+  ERROR_MSG("Allocate didn't find an available entry");
+}
+
+template<class ENTRY>
+inline 
+void CacheMemory<ENTRY>::evictDataArray(const Address& address) 
+{
+  assert(address == line_address(address));
+  if(!g_DATA_FIFO) assert(((CacheMemory*) dataArray)->isTagPresent(address));
+  
+  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
+
+  if(g_DATA_FIFO) ((CirBuf*)dataArray)->remove(address);
+  else ((CacheMemory*) dataArray)->lookup(address).m_Permission = AccessPermission_NotPresent;
+  
+  if(!g_DATA_FIFO) assert(!(((CacheMemory*) dataArray)->isTagPresent(address)));
+
+  //ERROR_MSG("Allocate didn't find an available entry");
+}
+
+template<class ENTRY>
+inline 
+void CacheMemory<ENTRY>::setReuseInDataArray(const Address& address) 
+{
+	  assert(address == line_address(address));
+	  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
+      
+      if(g_DATA_FIFO) ((CirBuf*)dataArray)->setReuse(address);
+      else ((CacheMemory*) dataArray)->setMRU(address, 0);
+}
+
+template<class ENTRY>
+inline 
+void CacheMemory<ENTRY>::setReuseInDataArray(const uint pos) 
+{
+//	  assert(address == line_address(address));
+//	  DEBUG_EXPR(CACHE_COMP, HighPrio, address);
+      
+      if(g_DATA_FIFO) ((CirBuf*)dataArray)->setReuse(pos);
+}
 
 template<class ENTRY>
 inline 
@@ -944,6 +1058,8 @@ void CacheMemory<ENTRY>::initialTouch(const Address& address, const NodeID proc)
 		if(m_machType==MachineType_L2Cache) {
 			m_cache[cacheSet][i].m_uses = 1;
 			m_cache[cacheSet][i].m_reuses = 0;
+			m_cache[cacheSet][i].m_reusesNoCycl = 0;
+
 			if(g_SHADOW && m_version != -1) {
 				if(m_shadow->isTagPresent( address)) {
 					m_shadow->deallocate(address);
@@ -954,8 +1070,6 @@ void CacheMemory<ENTRY>::initialTouch(const Address& address, const NodeID proc)
 			}
 		}
       m_replacementPolicy_ptr->touch(cacheSet, i, aux, proc);
-
-
 }
 
 template<class ENTRY>
@@ -966,23 +1080,21 @@ void CacheMemory<ENTRY>::deallocate(const Address& address)
   assert(isTagPresent(address));
   DEBUG_EXPR(CACHE_COMP, HighPrio, address);
   
-  if( m_version!=-1) {
-		//cerr << "deallocate" << endl;
-	}
-  //JORGE
- // m_cache[cacheSet][i].
-// cout << "hola" << endl;
 
 	if(m_machType == MACHINETYPE_L2CACHE_ENUM && m_version!=-1) {
 		//L2Cache_Entry a = (L2Cache_Entry) lookup(address);
 		m_histoUseThread[(lookup(address)).m_owner.num]->add((lookup(address)).m_uses);  
 		m_histoUse->add(( lookup(address)).m_uses);
 		if(lookup(address).m_reuses > 0) {
-			m_histoReuseThread[(lookup(address)).m_owner.num]->add((lookup(address)).m_reuses);  
-			m_histoReuse->add(( lookup(address)).m_reuses);
+
+		  m_histoReuseThread[(lookup(address)).m_owner.num]->add((lookup(address)).m_reuses);  
+		  m_histoReuse->add(( lookup(address)).m_reuses);
 		}
-		
-		printTemp(address);
+		if(lookup(address).m_reusesNoCycl > 0) {
+		  m_histoReuseNoCyclThread[(lookup(address)).m_owner.num]->add((lookup(address)).m_reusesNoCycl);  
+		  m_histoReuseNoCycl->add(( lookup(address)).m_reusesNoCycl);
+		}
+		//printTemp(address);  // In RnR cache is called from the protocol when it is receiving DataRepl!
 	}
 	
   lookup(address).m_Last_Address= address;
@@ -1002,8 +1114,15 @@ void CacheMemory<ENTRY>::deallocate(const Address& address)
 		 m_shadow->allocateL2(address);
 	}
 
-
-
+ }
+ 
+template<class ENTRY>
+inline  
+void CacheMemory<ENTRY>::trackReuseOnDataRepl(const Address& address) {
+    if(lookup(address).m_reusesNoCycl > 0) {
+		  m_histoReuseNoCyclThread[(lookup(address)).m_owner.num]->add((lookup(address)).m_reusesNoCycl);  
+		  m_histoReuseNoCycl->add(( lookup(address)).m_reusesNoCycl);
+		}
 }
 
 // Returns with the physical address of the conflicting cache line
@@ -1108,6 +1227,7 @@ template<class ENTRY>
 inline 
 void CacheMemory<ENTRY>::setMRU(const Address& address, const NodeID proc)
 {
+
   Index cacheSet;
 
   cacheSet = addressToCacheSet(address);
@@ -1115,6 +1235,8 @@ void CacheMemory<ENTRY>::setMRU(const Address& address, const NodeID proc)
     
   m_cache[cacheSet][way].m_uses++;
   m_cache[cacheSet][way].m_reuses++;
+
+  m_cache[cacheSet][way].m_reusesNoCycl++;
   
   m_replacementPolicy_ptr->touch(cacheSet, 
                                  way, 
@@ -1267,7 +1389,7 @@ void CacheMemory<ENTRY>::printTemp(const Address& address)
    if(g_LIFETRACE)
    {
 		uint idx= (m_cache[cacheSet][loc].m_timeLoad - m_bigbang) / 100000 ;
-    
+ 
     	for(uint aux = m_cache[cacheSet][loc].m_timeLoad; aux < m_cache[cacheSet][loc].m_timeLast; aux += 100000, idx++) 
     	{
     		timeLoadArray[idx] ++;
@@ -1319,6 +1441,105 @@ void CacheMemory<ENTRY>::printTemp(const Address& address)
 //  cerr << m_cache[cacheSet][loc].m_timeLoad << "\t" << m_cache[cacheSet][loc].m_timeLast 
 //  << "\t" << m_cache[cacheSet][loc].m_timeRepl << endl;
 
+}
+
+
+template<class ENTRY>
+inline 
+void CacheMemory<ENTRY>::printReuseCommand()
+{
+
+  uint64 auxTotalFirstInsertions = 0;
+  uint64 auxTotalSecondInsertions = 0;
+  for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++) {
+    cerr  << "insertions_core_" << i << ":\t" <<  m_firstInsertions << endl;
+    auxTotalFirstInsertions += m_firstInsertions[i];
+    auxTotalSecondInsertions += m_secondInsertions[i];
+  }
+  cerr << "total_first_insertions:\t" << 	auxTotalFirstInsertions << endl;
+  cerr << "total_second_insertions:\t" << 	auxTotalSecondInsertions << endl;
+
+  cerr << "Reuse patterns per core:" ;
+  for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++)
+  {
+  	cerr << endl << "core " << i<< ": " ;
+  	for(int j=0; j<9; j++) cerr << reuseArrayCore[i][j] << "\t";
+  }
+  
+  
+  cerr << endl << m_histoGlobal << endl;
+  cerr << "The number of not referenced blocks after 1K misses is: " << m_nLastGlobal << endl;
+  /*for(uint i=0; i<m_cache_num_sets; i++)
+  	cerr << m_histoSets[i] << endl;*/
+  	
+  m_replacementPolicy_ptr->printStats(cerr);	
+
+  for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++) 
+  	cerr  << "_use_thread_" << i << ":\t" <<  *m_histoUseThread[i] << endl;
+  	
+  cerr  << "_use_total_" << ":\t" <<  *m_histoUse << endl;
+
+  
+  for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++) 
+  	cerr  << "_reuse_thread_" << i << ":\t" <<  *m_histoReuseThread[i] << endl;
+  	
+  cerr  << "_reuse_total_" << ":\t" <<  *m_histoReuse << endl;
+  
+  for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++) 
+  	cerr  << "_reuseNoCycl_thread_" << i << ":\t" <<  *m_histoReuseNoCyclThread[i] << endl;
+  	
+  cerr  << "_reuseNoCycl_total_" << ":\t" <<  *m_histoReuseNoCycl << endl;
+  
+  if(g_DATA_FIFO) ((CirBuf*) dataArray)->printStats();
+}
+
+template<class ENTRY>
+inline 
+void CacheMemory<ENTRY>::printTempCommand()
+{ 
+  assert(m_version==0);
+  
+
+	uint n_bloques = 0;
+	for (int i = 0; i < m_cache_num_sets; i++) 
+	{
+		for (int j = 0; j < m_cache_assoc; j++) 
+		{
+        	if(m_cache[i][j].m_Permission != AccessPermission_NotPresent &&\
+        	(m_cache[i][j].m_CacheState == L2Cache_State_L2_M ||\
+        	m_cache[i][j].m_CacheState == L2Cache_State_L2_MT ||\
+        	m_cache[i][j].m_CacheState == L2Cache_State_L2_S ||\
+        	m_cache[i][j].m_CacheState == L2Cache_State_L2_SS ||\
+        	m_cache[i][j].m_CacheState == L2Cache_State_L2_O ||\
+        	m_cache[i][j].m_CacheState == L2Cache_State_L2_SO)) printTemp(m_cache[i][j].m_Address);
+        
+        	n_bloques++;
+    	}
+    }
+    
+ 
+  cerr << "PRINT_TEMP" << endl;
+ // for(int i=0; i<10000; i++) cerr << timeLoadArray[i] << "\t" << timeLastArray[i]  << "\t" <<timeReplArray[i] << endl;
+  
+  int max;
+  for(int i=49999; i>-1; i--) 
+  	if(timeLoadArray[i] != 0) { 
+  		max = i;
+  		break;
+  	}
+  	
+  	cerr << max << endl;
+  for(int i=1; i<max; i++)
+  {    
+    cerr << timeLoadArray[i] << "\t" << (float)timeLoadArray[i] / (float)(n_bloques) << endl;
+  }
+  
+  cerr << "Reuse patterns per core:" ;
+  for(int i =0; i< RubyConfig::numberOfL1CachePerChip(0); i++)
+  {
+  	cerr << endl << "core " << i<< ": " ;
+  	for(int j=0; j<9; j++) cerr << reuseArrayCore[i][j] << "\t";
+  }
 }
 
 

@@ -137,6 +137,10 @@ public:
   void addL15Acceso(const CacheMsg& msg, NodeID id);
   void addL2Acceso(AccessModeType access_mode, NodeID id);
   CacheProfiler* getInstructionCacheProfiler() { return m_L1I_cache_profiler_ptr; }
+  void profile_cache_to_cache(int delay);
+  void addSecondaryStatHitTag(NodeID id);
+  void addSecondaryStatHitData(NodeID id);
+  void addSecondaryStatFirstInsertion(NodeID id);
   
   void addPrimaryStatSample(const CacheMsg& msg, NodeID id);
   void add15StatSample(const CacheMsg& msg, NodeID id);
@@ -144,6 +148,7 @@ public:
   void addSecondaryStatSample(CacheRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id);
   void addHit(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id);
   void addAddressTraceSample(const CacheMsg& msg, NodeID id);
+  void addL2dataMissStatSample(GenericRequestType requestType, AccessModeType type, int msgSize, PrefetchBit pfBit, NodeID id);
 
   void profileRequest(const string& requestStr);
   void profileSharing(const Address& addr, AccessType type, NodeID requestor, const Set& sharers, const Set& owner);
@@ -377,6 +382,8 @@ private:
   Histogram m_outstanding_persistent_requests;
 
   Histogram m_average_latency_estimate;
+  
+  Histogram m_c2c_latency;
 
   //---- begin Transactional Memory CODE
   Map <int, int>* m_procsInXactMap_ptr;
