@@ -719,7 +719,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   action(ja_issuePREFETCH, "ja", desc="Issue prefetch") {
   peek(prefetch_in, RequestMsg) {      
        L2cacheMemory[address].owner := in_msg.RequestorMachId;
-        dram.i_request(address, 3, in_msg.RequestorMachId, in_msg.RequestorMachId);
+        dram.i_request(address, 3, in_msg.RequestorMachId, in_msg.RequestorMachId, false);
       
     }
   }
@@ -727,7 +727,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   action(t_sendUpgradePrefetch, "sup", desc="send upgrade prefetch") {
     peek(L1RequestIntraChipL2Network_in, RequestMsg) {
       L2cacheMemory[address].owner := in_msg.RequestorMachId;
-        dram.i_request(address, 5, in_msg.RequestorMachId, in_msg.RequestorMachId);
+        dram.i_request(address, 5, in_msg.RequestorMachId, in_msg.RequestorMachId, false);
     }
   }
   
@@ -735,26 +735,26 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
   action(a_issueGETS, "a", desc="Issue GETS") {
     peek(L1RequestIntraChipL2Network_in, RequestMsg) {      
        L2cacheMemory[address].owner := in_msg.RequestorMachId;
-        dram.i_request(address, 1, in_msg.RequestorMachId, in_msg.RequestorMachId);
+        dram.i_request(address, 1, in_msg.RequestorMachId, in_msg.RequestorMachId, false);
     }
   }
 
   action(b_issueGETX, "b", desc="Issue GETX") {
     peek(L1RequestIntraChipL2Network_in, RequestMsg) {
         L2cacheMemory[address].owner := in_msg.RequestorMachId;       
-        dram.i_request(address, 1, in_msg.RequestorMachId, in_msg.RequestorMachId);      
+        dram.i_request(address, 1, in_msg.RequestorMachId, in_msg.RequestorMachId, false);      
     }
   }
 
   action(f_issueGETINSTR, "f", desc="Issue GETINSTR") {
     peek(L1RequestIntraChipL2Network_in, RequestMsg) {
       L2cacheMemory[address].owner := in_msg.RequestorMachId;
-        dram.i_request(address, 1, in_msg.RequestorMachId, in_msg.RequestorMachId);
+        dram.i_request(address, 1, in_msg.RequestorMachId, in_msg.RequestorMachId, false);
     }
   }
     
   action(d_issuePUTX, "d", desc="Issue PUTX") {
-        dram.i_request(address, 2, machineID, machineID);
+        dram.i_request(address, 2, machineID, machineID, false);
    }
 
   // finalAck issued from the response queue
