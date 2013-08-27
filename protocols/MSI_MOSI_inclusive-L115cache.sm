@@ -147,6 +147,7 @@ machine(L1Cache, "MSI Directory L1 Cache CMP") {
     int reusedL1, desc="La L15 almacena el uso que tuvo en la L1";
     int uses, desc="";
     int reuses, desc="";
+    int reusesNoCycl, desc="";
     MachineID owner, desc="";
     bool NRU, desc="";
   }

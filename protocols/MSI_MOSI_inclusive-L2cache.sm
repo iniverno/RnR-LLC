@@ -248,6 +248,7 @@ machine(L2Cache, "MOSI Directory L2 Cache CMP") {
     Time timeLast, desc="";
     Time timeRepl, desc="";
     int reuseL1, desc="";
+    int reusesNoCycl, desc="";
     bool instr, desc="if it is a instruction or not ";
     int RRPV, desc="interval prediction for RRIP algorithm";
     bool NRU, desc="";
